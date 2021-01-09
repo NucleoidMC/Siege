@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "io.github.restioson.siege.mixins",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "FireworkRocketEntityAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

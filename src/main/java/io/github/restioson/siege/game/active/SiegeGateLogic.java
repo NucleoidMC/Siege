@@ -1,5 +1,6 @@
 package io.github.restioson.siege.game.active;
 
+import io.github.restioson.siege.Siege;
 import io.github.restioson.siege.game.SiegeKit;
 import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.map.SiegeGate;
@@ -18,11 +19,14 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.explosion.Explosion;
+import sun.awt.image.PixelConverter;
 import xyz.nucleoid.plasmid.game.player.GameTeam;
 import xyz.nucleoid.plasmid.util.PlayerRef;
 
+import java.awt.*;
 import java.util.Random;
 
 public class SiegeGateLogic {
@@ -67,20 +71,23 @@ public class SiegeGateLogic {
             if (!gate.bashedOpen && gate.health > 0 && gate.portcullis.contains(pos)) {
                 if (participant.team == gate.flag.team) {
                     player.sendMessage(new LiteralText("You cannot bash your own gate!").formatted(Formatting.RED), true);
+                    player.playSound(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1f, 1f);
                     return ActionResult.FAIL;
                 } else if (!rightKit) {
                     player.sendMessage(new LiteralText("Only soldiers and shieldbearers can bash!").formatted(Formatting.RED), true);
+                    player.playSound(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1f, 1f);
                     return ActionResult.FAIL;
                 } else if (!holdingBashWeapon) {
                     player.sendMessage(new LiteralText("You can only bash with a sword or axe!").formatted(Formatting.RED), true);
+                    player.playSound(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1f, 1f);
                     return ActionResult.FAIL;
                 } else if (!player.isSprinting()) {
                     player.sendMessage(new LiteralText("You must be sprinting to bash!").formatted(Formatting.RED), true);
+                    player.playSound(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.PLAYERS, 1f, 1f);
                     return ActionResult.FAIL;
                 } else if (player.getItemCooldownManager().isCoolingDown(mainHandItem)) {
                     return ActionResult.FAIL;
                 }
-
                 player.getItemCooldownManager().set(Items.IRON_SWORD, 20);
                 player.getItemCooldownManager().set(Items.STONE_AXE, 20);
                 ServerWorld world = this.active.gameSpace.getWorld();
@@ -120,6 +127,13 @@ public class SiegeGateLogic {
                 bashTeam = SiegeTeams.ATTACKERS;
             }
 
+            final Vec3d boundsCenter = gate.portcullis.getCenter();
+
+            Siege.spawnFirework(world, boundsCenter.x, boundsCenter.y + 12D, boundsCenter.z, new Color[]{
+                    new Color(bashTeam.getColor()),
+                    new Color(bashTeam.getFireworkColor())
+            }, false, 0);
+
             this.active.gameSpace.getPlayers().sendMessage(
                     new LiteralText("The ")
                             .append(new LiteralText(gate.flag.name).formatted(Formatting.YELLOW))
@@ -130,6 +144,8 @@ public class SiegeGateLogic {
                             .append("!")
                             .formatted(Formatting.BOLD)
             );
+
+            this.active.gameSpace.getPlayers().sendSound(SoundEvents.EVENT_RAID_HORN, SoundCategory.PLAYERS, 1f, 1f);
 
             gate.bashedOpen = true;
         } else if (gate.health == gate.repairedHealthThreshold && gate.bashedOpen) {
@@ -145,8 +161,17 @@ public class SiegeGateLogic {
                             .formatted(Formatting.BOLD)
             );
 
+            final Vec3d boundsCenter = gate.portcullis.getCenter();
+
+            Siege.spawnFirework(world, boundsCenter.x, boundsCenter.y + 12D, boundsCenter.z, new Color[]{
+                    new Color(team.getColor()),
+                    new Color(team.getFireworkColor())
+            }, false, 0);
+
             BlockPos max = gate.portcullis.getMax();
             world.playSound(null, max.getX(), max.getY(), max.getZ(), SoundEvents.BLOCK_ANVIL_USE, SoundCategory.BLOCKS, 1.0f, world.random.nextFloat() * 0.25F + 0.6F);
+
+            this.active.gameSpace.getPlayers().sendSound(SoundEvents.ENTITY_VILLAGER_CELEBRATE, SoundCategory.PLAYERS, 1f, 1f);
 
             gate.slider.setClosed(world);
             gate.bashedOpen = false;
