@@ -47,12 +47,17 @@ public class SiegeGateLogic {
         for (SiegeGate gate : this.active.map.gates) {
             if (gate.brace != null && gate.brace.contains(pos)) {
                 if (gate.health < gate.maxHealth) {
+                    ServerWorld world = this.active.gameSpace.getWorld();
                     gate.health += 1;
                     player.sendMessage(new LiteralText("Gate health: ").append(Integer.toString(gate.health)).formatted(Formatting.DARK_GREEN), true);
                     final BlockPos max = gate.portcullis.getMax();
                     player.world.playSound(null, max.getX(), max.getY(), max.getZ(), SoundEvents.ENTITY_VILLAGER_WORK_FLETCHER, SoundCategory.BLOCKS, 1.0f, player.world.random.nextFloat() * 0.25F + 0.6F);
                     this.active.gameSpace.getWorld().setBlockState(pos, Blocks.AIR.getDefaultState());
+                    gate.broadcastHealth(player, this.active, world);
+                    world.setBlockState(pos, Blocks.AIR.getDefaultState());
                     ctx.getStack().decrement(1);
+                    player.networkHandler.sendPacket(new ScreenHandlerSlotUpdateS2CPacket(-2, slot, ctx.getStack()));
+                    return ActionResult.FAIL;
                 } else {
                     player.sendMessage(new LiteralText("The gate is already at max health!").formatted(Formatting.DARK_GREEN), true);
                 }
@@ -64,7 +69,7 @@ public class SiegeGateLogic {
         return ActionResult.PASS;
     }
 
-    public ActionResult maybeBash(BlockPos pos, ServerPlayerEntity player, SiegePlayer participant) {
+    public ActionResult maybeBash(BlockPos pos, ServerPlayerEntity player, SiegePlayer participant, long time) {
         Item mainHandItem = player.inventory.getMainHandStack().getItem();
         boolean holdingBashWeapon = mainHandItem == Items.IRON_SWORD || mainHandItem == Items.STONE_AXE;
         boolean rightKit = participant.kit == SiegeKit.SHIELD_BEARER || participant.kit == SiegeKit.SOLDIER;
@@ -95,7 +100,9 @@ public class SiegeGateLogic {
                 ServerWorld world = this.active.gameSpace.getWorld();
                 world.createExplosion(null, pos.getX(), pos.getY(), pos.getZ(), 0.0f, Explosion.DestructionType.NONE);
                 gate.health -= 1;
-                player.sendMessage(new LiteralText("Gate health: ").append(Integer.toString(gate.health)).formatted(Formatting.DARK_GREEN), true);
+                gate.timeOfLastBash = time;
+                gate.broadcastHealth(player, this.active, world);
+
                 return ActionResult.FAIL;
             }
         }

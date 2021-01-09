@@ -5,18 +5,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import io.github.restioson.siege.game.active.SiegeActive;
 import io.github.restioson.siege.game.map.SiegeMap;
-import io.github.restioson.siege.game.map.SiegeMapGenerator;
+import io.github.restioson.siege.game.map.SiegeMapLoader;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
 import xyz.nucleoid.fantasy.BubbleWorldConfig;
-import xyz.nucleoid.plasmid.game.GameOpenContext;
-import xyz.nucleoid.plasmid.game.GameOpenProcedure;
-import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.GameWaitingLobby;
-import xyz.nucleoid.plasmid.game.StartResult;
-import xyz.nucleoid.plasmid.game.TeamSelectionLobby;
+import xyz.nucleoid.plasmid.game.*;
 import xyz.nucleoid.plasmid.game.event.PlayerAddListener;
 import xyz.nucleoid.plasmid.game.event.PlayerDeathListener;
 import xyz.nucleoid.plasmid.game.event.RequestStartListener;
@@ -42,7 +37,7 @@ public class SiegeWaiting {
     }
 
     public static GameOpenProcedure open(GameOpenContext<SiegeConfig> context) {
-        SiegeMapGenerator generator = new SiegeMapGenerator(context.getConfig().mapConfig);
+        SiegeMapLoader generator = new SiegeMapLoader(context.getConfig().mapConfig);
         SiegeMap map = generator.create();
 
         BubbleWorldConfig worldConfig = new BubbleWorldConfig()

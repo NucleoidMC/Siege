@@ -14,14 +14,23 @@ public class SiegePlayer {
     public AttackRecord lastTimeWasAttacked;
     public long timeOfDeath;
     public long timeOfSpawn;
+
     // If they have attacked this life, then their respawn invulnerability is removed
     public boolean attackedThisLife;
     private final Object2IntOpenHashMap<SiegePersonalResource> resources = new Object2IntOpenHashMap<>();
 
+    // Statistics
+    public int deaths;
+    public int kills;
+    public int captures;
+    public int secures;
+
     public SiegePlayer(GameTeam team) {
         this.team = team;
         this.kit = SiegeKit.SOLDIER;
-        this.resources.defaultReturnValue(64); // TODO do this better but wood is only currently so eh
+        this.resources.put(SiegePersonalResource.WOOD, SiegePersonalResource.WOOD.max);
+        this.resources.put(SiegePersonalResource.TNT, SiegePersonalResource.TNT.max);
+        this.resources.defaultReturnValue(0);
     }
 
     public ServerPlayerEntity attacker(long time, ServerWorld world) {
@@ -36,13 +45,6 @@ public class SiegePlayer {
         int newAmount = this.resources.addTo(resource, amount);
         if (newAmount > resource.max) {
             this.resources.replace(resource, resource.max);
-        }
-    }
-
-    public void decrementResource(SiegePersonalResource resource, int amount) {
-        int newAmount = this.resources.addTo(resource, -amount);
-        if (newAmount < 0) {
-            this.resources.replace(resource, 0);
         }
     }
 

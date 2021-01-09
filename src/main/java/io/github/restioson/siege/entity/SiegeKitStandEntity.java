@@ -3,6 +3,7 @@ package io.github.restioson.siege.entity;
 import io.github.restioson.siege.game.SiegeKit;
 import io.github.restioson.siege.game.active.SiegeActive;
 import io.github.restioson.siege.game.active.SiegePlayer;
+import io.github.restioson.siege.game.map.SiegeFlag;
 import io.github.restioson.siege.game.map.SiegeKitStandLocation;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
@@ -14,10 +15,15 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.plasmid.game.player.GameTeam;
 
 public final class SiegeKitStandEntity extends ArmorStandEntity {
-    public final GameTeam team;
+    @Nullable
+    public final SiegeFlag controllingFlag;
+    @Nullable
+    private final GameTeam team;
+
     private final SiegeKit type;
     private final SiegeActive game;
 
@@ -25,6 +31,7 @@ public final class SiegeKitStandEntity extends ArmorStandEntity {
         super(EntityType.ARMOR_STAND, world);
         this.type = stand.type;
         this.team = stand.team;
+        this.controllingFlag = stand.controllingFlag;
         this.game = game;
         this.setPose(EntityPose.CROUCHING);
 
@@ -37,6 +44,18 @@ public final class SiegeKitStandEntity extends ArmorStandEntity {
         this.type.equipArmourStand(this);
     }
 
+    public GameTeam getTeam() {
+        if (this.controllingFlag != null) {
+            return this.controllingFlag.team;
+        } else {
+            return this.team;
+        }
+    }
+
+    public void onControllingFlagCaptured() {
+        this.type.equipArmourStand(this);
+    }
+
     @Override
     public ActionResult interactAt(PlayerEntity player, Vec3d hitPos, Hand hand) {
         SiegePlayer participant = this.game.participant((ServerPlayerEntity) player);
@@ -44,7 +63,7 @@ public final class SiegeKitStandEntity extends ArmorStandEntity {
             return ActionResult.FAIL;
         }
 
-        if (participant.team != this.team) {
+        if (participant.team != this.getTeam()) {
             return ActionResult.FAIL;
         }
 

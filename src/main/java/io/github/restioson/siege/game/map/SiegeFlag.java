@@ -1,5 +1,6 @@
 package io.github.restioson.siege.game.map;
 
+import io.github.restioson.siege.entity.SiegeKitStandEntity;
 import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.active.CapturingState;
 import io.github.restioson.siege.game.active.SiegeCaptureLogic;
@@ -24,9 +25,13 @@ public final class SiegeFlag {
     public boolean capturable = true;
     public boolean pluralName = false;
     public List<BlockBounds> flagIndicatorBlocks;
+    public List<SiegeKitStandEntity> kitStands;
 
     @Nullable
     public BlockBounds respawn;
+
+    @Nullable
+    public SiegeGate gate;
 
     public GameTeam team;
 
@@ -35,6 +40,7 @@ public final class SiegeFlag {
 
     // The flags which must be captured before this flag can be captured
     public List<SiegeFlag> prerequisiteFlags = new ArrayList<>();
+    public List<SiegeFlag> recapturePrerequisites = new ArrayList<>();
 
     public final ServerBossBar captureBar = new ServerBossBar(new LiteralText("Capturing"), BossBar.Color.RED, BossBar.Style.NOTCHED_10);
     private final Set<ServerPlayerEntity> capturingPlayers = new ReferenceOpenHashSet<>();
@@ -45,6 +51,7 @@ public final class SiegeFlag {
         this.team = team;
         this.bounds = bounds;
         this.respawn = respawn;
+        this.kitStands = new ArrayList<>();
     }
 
     public String pastToBe() {
@@ -65,7 +72,11 @@ public final class SiegeFlag {
 
     public boolean isReadyForCapture() {
         if (this.team == SiegeTeams.ATTACKERS) {
-            return true;
+            for (SiegeFlag flag : this.recapturePrerequisites) {
+                if (flag.team == this.team) {
+                    return false;
+                }
+            }
         }
 
         for (SiegeFlag flag : this.prerequisiteFlags) {
@@ -137,5 +148,16 @@ public final class SiegeFlag {
         } else {
             this.captureBar.setVisible(false);
         }
+    }
+
+    public void closeCaptureBar() {
+        this.captureBar.clearPlayers();
+        this.captureBar.setVisible(false);
+    }
+
+    public boolean isFrontLine(long time) {
+        CapturingState state = this.capturingState;
+        return (state != null && state.hasAlert() && state != CapturingState.SECURING)
+                || (this.gate != null && time - this.gate.timeOfLastBash < 5 * 20);
     }
 }

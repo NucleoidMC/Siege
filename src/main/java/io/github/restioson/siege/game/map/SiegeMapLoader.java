@@ -25,10 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class SiegeMapGenerator {
+public class SiegeMapLoader {
     private final SiegeMapConfig config;
 
-    public SiegeMapGenerator(SiegeMapConfig config) {
+    public SiegeMapLoader(SiegeMapConfig config) {
         this.config = config;
     }
 
@@ -47,7 +47,7 @@ public class SiegeMapGenerator {
             map.setWaitingSpawn(waitingSpawn);
 
             this.addFlagsToMap(map, template.getMetadata());
-            map.kitStands.addAll(this.collectKitStands(template));
+            map.kitStands.addAll(this.collectKitStands(map.flags, template));
 
             for (BlockPos pos : template.getBounds()) {
                 BlockState state = template.getBlockState(pos);
@@ -62,15 +62,29 @@ public class SiegeMapGenerator {
         }
     }
 
-    private List<SiegeKitStandLocation> collectKitStands(MapTemplate template) {
+    private List<SiegeKitStandLocation> collectKitStands(List<SiegeFlag> flags, MapTemplate template) {
         return template.getMetadata()
                 .getRegions("kit_stand")
                 .map(region -> {
                     CompoundTag data = region.getData();
-                    GameTeam team = this.parseTeam(data);
+                    GameTeam team = null;
+                    if (data.contains("team")) {
+                        team = this.parseTeam(data);
+                    }
+
+                    SiegeFlag flag = null;
+                    if (data.contains("flag")) {
+                        flag = flags.stream().filter(f -> f.id.equalsIgnoreCase(data.getString("flag"))).findAny().orElse(null);
+
+                        if (flag == null) {
+                            Siege.LOGGER.error("Unknown flag \"{}\"", data.getString("flag"));
+                            throw new GameOpenException(new LiteralText("unknown flag"));
+                        }
+                    }
+
                     SiegeKit type = this.parseKitStandType(data);
 
-                    return new SiegeKitStandLocation(team, region.getBounds().getCenter(), type, data.getFloat("yaw"));
+                    return new SiegeKitStandLocation(team, flag, region.getBounds().getCenter(), type, data.getFloat("yaw"));
                 })
                 .collect(Collectors.toList());
     }
@@ -115,11 +129,24 @@ public class SiegeMapGenerator {
 
                 SiegeFlag prerequisite = flags.get(prerequisiteId);
                 if (prerequisite == null) {
-                    Siege.LOGGER.error("Unknown flag \"{}}\"", prerequisiteId);
+                    Siege.LOGGER.error("Unknown flag \"{}\"", prerequisiteId);
                     throw new GameOpenException(new LiteralText("unknown flag"));
                 }
 
                 flag.prerequisiteFlags.add(prerequisite);
+            }
+
+            ListTag recapturePrerequisites = data.getList("recapture_prerequisites", NbtType.STRING);
+            for (int i = 0; i < recapturePrerequisites.size(); i++) {
+                String prerequisiteId = recapturePrerequisites.getString(i);
+
+                SiegeFlag prerequisite = flags.get(prerequisiteId);
+                if (prerequisite == null) {
+                    Siege.LOGGER.error("Unknown flag \"{}\"", prerequisiteId);
+                    throw new GameOpenException(new LiteralText("unknown flag"));
+                }
+
+                flag.recapturePrerequisites.add(prerequisite);
             }
 
             flag.flagIndicatorBlocks = metadata.getRegions("flag_indicator")
@@ -188,7 +215,9 @@ public class SiegeMapGenerator {
                             .findFirst()
                             .orElse(null);
 
-                    return new SiegeGate(flag, region.getBounds(), portcullisRegion.getBounds(), brace, retractHeight, repairHealthThreshold, maxHealth);
+                    SiegeGate gate = new SiegeGate(flag, region.getBounds(), portcullisRegion.getBounds(), brace, retractHeight, repairHealthThreshold, maxHealth);
+                    flag.gate = gate;
+                    return gate;
                 })
                 .collect(Collectors.toList());
 
@@ -226,6 +255,9 @@ public class SiegeMapGenerator {
                 break;
             case "builder":
                 type = SiegeKit.CONSTRUCTOR;
+                break;
+            case "demolitioner":
+                type = SiegeKit.DEMOLITIONER;
                 break;
             default:
                 Siege.LOGGER.error("Unknown kit \"" + kitName + "\"");

@@ -4,6 +4,7 @@ import io.github.restioson.siege.game.SiegeTeams;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import xyz.nucleoid.plasmid.game.player.GameTeam;
 import xyz.nucleoid.plasmid.map.template.MapTemplate;
@@ -47,6 +48,10 @@ public class SiegeMap {
 
     public void addProtectedBlock(long pos) {
         this.protectedBlocks.add(pos);
+    }
+
+    public boolean isProtectedBlock(BlockPos pos) {
+        return this.isProtectedBlock(pos.asLong());
     }
 
     public boolean isProtectedBlock(long pos) {
