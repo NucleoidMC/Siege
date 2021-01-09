@@ -24,6 +24,7 @@ import net.minecraft.world.GameMode;
 import net.minecraft.world.explosion.Explosion;
 import sun.awt.image.PixelConverter;
 import xyz.nucleoid.plasmid.game.player.GameTeam;
+import xyz.nucleoid.plasmid.util.BlockBounds;
 import xyz.nucleoid.plasmid.util.PlayerRef;
 
 import java.awt.*;
@@ -48,7 +49,8 @@ public class SiegeGateLogic {
                 if (gate.health < gate.maxHealth) {
                     gate.health += 1;
                     player.sendMessage(new LiteralText("Gate health: ").append(Integer.toString(gate.health)).formatted(Formatting.DARK_GREEN), true);
-
+                    final BlockPos max = gate.portcullis.getMax();
+                    player.world.playSound(null, max.getX(), max.getY(), max.getZ(), SoundEvents.ENTITY_VILLAGER_WORK_FLETCHER, SoundCategory.BLOCKS, 1.0f, player.world.random.nextFloat() * 0.25F + 0.6F);
                     this.active.gameSpace.getWorld().setBlockState(pos, Blocks.AIR.getDefaultState());
                     ctx.getStack().decrement(1);
                 } else {
