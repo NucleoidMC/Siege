@@ -2,7 +2,7 @@
   "type": "siege:siege",
   "name": "Siege",
   "map": {
-    "id": "siege:villagers_vs_pillagers",
+    "id": "siuol:vvpfix",
     "attacker_spawn_angle": 180
   },
   "players": {
