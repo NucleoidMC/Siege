@@ -1,0 +1,17 @@
+{
+  "type": "siege:siege",
+  "icon": "minecraft:iron_sword",
+  "short_name": "gameType.siege.siege",
+  "description": ["game.siege.desc", "game.siege.recapture.desc"],
+  "map": {
+    "id": "siege:canal",
+    "attacker_spawn_angle": 180
+  },
+  "players": {
+    "min": 1,
+    "max": 100,
+    "threshold": 4
+  },
+  "recapture": true,
+  "time_limit_mins": 20
+}

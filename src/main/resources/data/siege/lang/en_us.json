@@ -1,5 +1,7 @@
 {
   "gameType.siege.siege": "Siege",
+  "game.siege.canal": "Siege: Canal",
+  "game.siege.canal_recapture": "Siege: Canal (with Recapture)",
   "game.siege.jungle": "Siege: Jungle",
   "game.siege.jungle_recapture": "Siege: Jungle (with Recapture)",
   "game.siege.villagers_vs_pillagers": "Siege: Villagers vs Pillagers",
