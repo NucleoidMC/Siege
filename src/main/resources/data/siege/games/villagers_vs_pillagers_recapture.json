@@ -1,8 +1,23 @@
 {
   "type": "siege:siege",
   "icon": "minecraft:iron_sword",
-  "short_name": "gameType.siege.siege",
-  "description": ["game.siege.desc", "game.siege.recapture.desc"],
+  "short_name": {
+    "translate": "gameType.siege.siege"
+  },
+  "description": [
+    {
+      "translate": "game.siege.siege.desc"
+    },
+    {
+      "translate": "game.siege.recapture.desc.1"
+    },
+    {
+      "translate": "game.siege.recapture.desc.2"
+    },
+    {
+      "translate": "game.siege.recapture.desc.3"
+    }
+  ],
   "map": {
     "id": "siege:villagers_vs_pillagers",
     "attacker_spawn_angle": 180

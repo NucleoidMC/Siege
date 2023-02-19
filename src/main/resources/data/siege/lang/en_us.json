@@ -7,6 +7,10 @@
   "game.siege.villagers_vs_pillagers_recapture": "Siege: Villagers vs Pillagers (with Recapture)",
   "game.siege.villagers_vs_pillagers_recapture_enderpearl": "Siege: Villagers vs Pillagers (with Recapture & Ender Pearls)",
   "game.siege.siege.desc": "A castle siege game.",
-  "game.siege.recapture.desc": "In this mode, defenders can recapture previously captured points.",
-  "game.siege.enderpearl.desc": "In this mode, defenders have ender pearls that allow them to teleport to points under siege."
+  "game.siege.recapture.desc.1": "In this mode, defenders can",
+  "game.siege.recapture.desc.2": "recapture previously captured",
+  "game.siege.recapture.desc.3": "points.",
+  "game.siege.enderpearl.desc.1": "In this mode, defenders have",
+  "game.siege.enderpearl.desc.2": "ender pearls that allow them",
+  "game.siege.enderpearl.desc.3": "to teleport to points under siege."
 }
