@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.block.*;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LightningEntity;
+import net.minecraft.screen.ScreenTexts;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -244,7 +245,7 @@ public final class SiegeCaptureLogic {
         this.gameSpace.getPlayers().sendMessage(
                 Text.literal("The ")
                         .append(Text.literal(flag.name).formatted(Formatting.YELLOW))
-                        .append(" ")
+                        .append(ScreenTexts.SPACE)
                         .append(flag.presentTobe())
                         .append(" being captured by the ")
                         .append(captureTeam.config().name())
@@ -278,7 +279,7 @@ public final class SiegeCaptureLogic {
         this.gameSpace.getPlayers().sendMessage(
                 Text.literal("The ")
                         .append(Text.literal(flag.name).formatted(Formatting.YELLOW))
-                        .append(" ")
+                        .append(ScreenTexts.SPACE)
                         .append(flag.pastToBe())
                         .append(" been captured by the ")
                         .append(captureTeam.config().name())
@@ -297,7 +298,7 @@ public final class SiegeCaptureLogic {
         this.gameSpace.getPlayers().sendMessage(
                 Text.literal("The ")
                         .append(Text.literal(flag.name).formatted(Formatting.YELLOW))
-                        .append(" ")
+                        .append(ScreenTexts.SPACE)
                         .append(flag.pastToBe())
                         .append(" been defended by the ")
                         .append(flag.team.config().name())

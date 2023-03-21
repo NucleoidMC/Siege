@@ -10,6 +10,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.item.Items;
+import net.minecraft.screen.ScreenTexts;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -118,7 +119,7 @@ public class SiegeGateLogic {
             this.game.gameSpace.getPlayers().sendMessage(
                     Text.literal("The ")
                             .append(Text.literal(gate.flag.name).formatted(Formatting.YELLOW))
-                            .append(" ")
+                            .append(ScreenTexts.SPACE)
                             .append(gate.flag.pastToBe())
                             .append(" been bashed open by the ")
                             .append(bashTeam.config().name())
@@ -132,7 +133,7 @@ public class SiegeGateLogic {
             this.game.gameSpace.getPlayers().sendMessage(
                     Text.literal("The ")
                             .append(Text.literal(gate.flag.name).formatted(Formatting.YELLOW))
-                            .append(" ")
+                            .append(ScreenTexts.SPACE)
                             .append(gate.flag.pastToBe())
                             .append(" been repaired by the ")
                             .append(team.config().name())

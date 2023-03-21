@@ -21,6 +21,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.item.*;
+import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -429,7 +430,7 @@ public class SiegeActive {
         } else if (participant != null && participant.attacker(time, world) != null) {
             eliminationMessage.append(participant.attacker(time, world).getDisplayName());
             attacker = this.participant(participant.attacker(time, world));
-        } else if (source == DamageSource.DROWN) {
+        } else if (source.isIn(DamageTypeTags.IS_DROWNING)) {
             eliminationMessage.append("forgetting to just keep swimming");
         } else {
             eliminationMessage = Text.literal(" died");
