@@ -32,7 +32,7 @@ public final class WarpSelectionUi extends SimpleGui {
     private static List<GuiElementInterface> selectors(ServerPlayerEntity player, SiegeMap map, GameTeam team, Consumer<SiegeFlag> select) {
         List<GuiElementInterface> selectors = new ArrayList<>();
 
-        long time = player.world.getTime();
+        long time = player.getWorld().getTime();
 
         for (SiegeFlag flag : map.flags) {
             if (flag.team != team) {
