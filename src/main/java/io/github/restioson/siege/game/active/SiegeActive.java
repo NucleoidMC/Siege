@@ -2,6 +2,7 @@ package io.github.restioson.siege.game.active;
 
 import com.google.common.collect.Multimap;
 import eu.pb4.sgui.api.gui.SimpleGui;
+import io.github.restioson.siege.Siege;
 import io.github.restioson.siege.game.SiegeConfig;
 import io.github.restioson.siege.game.SiegeKit;
 import io.github.restioson.siege.game.SiegeSpawnLogic;
@@ -21,6 +22,7 @@ import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.item.*;
 import net.minecraft.registry.tag.DamageTypeTags;
+import net.minecraft.resource.LifecycledResourceManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -129,6 +131,7 @@ public class SiegeActive {
             activity.allow(GameRuleType.PLACE_BLOCKS);
             activity.allow(GameRuleType.UNSTABLE_TNT);
 
+            activity.listen(GameActivityEvents.RELOAD, active::onReload);
             activity.listen(GameActivityEvents.ENABLE, active::onOpen);
             activity.listen(GameActivityEvents.DISABLE, active::onClose);
             activity.listen(ItemThrowEvent.EVENT, active::onDropItem);
@@ -152,6 +155,14 @@ public class SiegeActive {
 
             active.map.spawnKitStands(active);
         });
+    }
+
+    private void onReload(LifecycledResourceManager resourceManager, boolean success) {
+        if (success) {
+            this.map.reload(this);
+        } else {
+            Siege.LOGGER.warn("Failed to reload datapacks and resources; not reloading map...");
+        }
     }
 
     private void onExplosion(Explosion explosion, boolean particles) {
