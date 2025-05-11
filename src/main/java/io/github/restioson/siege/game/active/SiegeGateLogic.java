@@ -7,10 +7,9 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.minecraft.SharedConstants;
 import net.minecraft.block.Blocks;
-import net.minecraft.item.AxeItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemUsageContext;
-import net.minecraft.item.SwordItem;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -18,7 +17,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.random.Random;
@@ -79,11 +77,11 @@ public class SiegeGateLogic {
     }
 
     public static boolean canUseToBash(Item item) {
-        return item instanceof SwordItem || item instanceof AxeItem;
+        return item.getRegistryEntry().isIn(ItemTags.SWORDS) || item.getRegistryEntry().isIn(ItemTags.SHOVELS);
     }
 
     public EventResult maybeBash(BlockPos pos, ServerPlayerEntity player, SiegePlayer participant, long time) {
-        var mainHandItem = player.getInventory().getMainHandStack();
+        var mainHandItem = player.getMainHandStack();
         boolean rightKit = participant.kit == SiegeKit.SHIELD_BEARER || participant.kit == SiegeKit.SOLDIER;
 
         for (SiegeGate gate : this.game.map.gates) {
@@ -107,12 +105,13 @@ public class SiegeGateLogic {
                 }
 
                 var inventory = player.getInventory();
-                for (var invList : List.of(inventory.main, inventory.offHand)) {
-                    for (var stack : invList) {
-                        if (canUseToBash(stack.getItem())) {
-                            cooldownMgr.set(stack, SharedConstants.TICKS_PER_SECOND);
-                        }
+                for (var stack : inventory.getMainStacks()) {
+                    if (canUseToBash(stack.getItem())) {
+                        cooldownMgr.set(stack, SharedConstants.TICKS_PER_SECOND);
                     }
+                }
+                if (canUseToBash(player.getOffHandStack().getItem())) {
+                    cooldownMgr.set(player.getOffHandStack(), SharedConstants.TICKS_PER_SECOND);
                 }
 
                 ServerWorld world = this.game.world;

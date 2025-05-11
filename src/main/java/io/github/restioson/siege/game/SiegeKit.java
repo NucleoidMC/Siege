@@ -1,5 +1,6 @@
 package io.github.restioson.siege.game;
 
+import com.google.common.collect.Iterators;
 import io.github.restioson.siege.entity.SiegeKitStandEntity;
 import io.github.restioson.siege.game.active.SiegePersonalResource;
 import io.github.restioson.siege.game.active.SiegePlayer;
@@ -23,9 +24,7 @@ import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.api.util.ItemStackBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Stream;
 
 public final class SiegeKit {
@@ -252,20 +251,20 @@ public final class SiegeKit {
     public void returnResources(ServerPlayerEntity player, SiegePlayer participant) {
         var inventory = player.getInventory();
 
-        for (var invList : List.of(inventory.main, inventory.offHand)) {
-            for (var stack : invList) {
-                for (var resource : this.resources) {
-                    if (resource.resource() == null) {
-                        continue;
-                    }
+        for (var it = Iterators.concat(inventory.getMainStacks().iterator(), Iterators.singletonIterator(player.getOffHandStack())); it.hasNext(); ) {
+            var stack = it.next();
+            for (var resource : this.resources) {
+                if (resource.resource() == null) {
+                    continue;
+                }
 
-                    if (resource.itemForTeam(participant.team) == stack.getItem()) {
-                        participant.incrementResource(resource.resource(), stack.getCount());
-                        break;
-                    }
+                if (resource.itemForTeam(participant.team) == stack.getItem()) {
+                    participant.incrementResource(resource.resource(), stack.getCount());
+                    break;
                 }
             }
         }
+
 
         inventory.clear();
     }
@@ -446,7 +445,7 @@ public final class SiegeKit {
                     .setDyeColor(team.config().dyeColor().getRgb());
 
             for (var enchantment : this.enchantments) {
-                builder.addEnchantment(enchantment.enchantment, enchantment.level);
+                builder.addEnchantment(enchantment.enchantment(), enchantment.level());
             }
 
             return builder.build();

@@ -45,7 +45,7 @@ public class SiegeHorn extends GoatHornItem implements PolymerItem {
     private static final int SOUND_RADIUS = 64;
     private static final int EFFECT_RADIUS = 15;
     public SiegeHorn(Settings settings) {
-        super(InstrumentTags.GOAT_HORNS, settings);
+        super(settings);
     }
 
     public static ItemStack getStack(RegistryWrapper.WrapperLookup lookup, RegistryKey<Instrument> instrument, List<StatusEffectInstance> effects) {

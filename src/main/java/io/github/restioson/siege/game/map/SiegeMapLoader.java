@@ -61,7 +61,7 @@ public class SiegeMapLoader {
         SiegeMap map = new SiegeMap(template);
 
         NbtCompound mapData = metadata.getData();
-        String biomeId = mapData.getString("biome");
+        String biomeId = mapData.getString("biome", "");
         if (!Strings.isNullOrEmpty(biomeId)) {
             template.setBiome(RegistryKey.of(RegistryKeys.BIOME, Identifier.of(biomeId)));
         } else {
@@ -69,7 +69,7 @@ public class SiegeMapLoader {
         }
 
         if (mapData.contains("time")) {
-            map.time = mapData.getLong("time");
+            map.time = mapData.getLong("time", 0);
         }
 
         TemplateRegion waitingSpawn = metadata.getFirstRegion("waiting_spawn");
@@ -77,7 +77,7 @@ public class SiegeMapLoader {
             throw new GameOpenException(Text.literal("waiting_spawn region required but not found"));
         }
 
-        map.setWaitingSpawn(new SiegeSpawn(waitingSpawn.getBounds(), waitingSpawn.getData().getFloat("yaw")));
+        map.setWaitingSpawn(new SiegeSpawn(waitingSpawn.getBounds(), waitingSpawn.getData().getFloat("yaw", 0)));
 
         addFlagsToMap(map, metadata);
         map.kitStands.addAll(collectKitStands(map.flags, template));
@@ -107,7 +107,7 @@ public class SiegeMapLoader {
 
                     SiegeFlag flag = null;
                     if (data.contains("flag")) {
-                        flag = flags.stream().filter(f -> f.id.equalsIgnoreCase(data.getString("flag"))).findAny().orElse(null);
+                        flag = flags.stream().filter(f -> f.id.equalsIgnoreCase(data.getString("flag", ""))).findAny().orElse(null);
 
                         if (flag == null) {
                             Siege.LOGGER.error("Unknown flag \"{}\"", data.getString("flag"));
@@ -122,7 +122,7 @@ public class SiegeMapLoader {
                             flag,
                             region.getBounds().centerBottom(),
                             type,
-                            data.getFloat("yaw")
+                            data.getFloat("yaw", 0)
                     );
                 })
                 .collect(Collectors.toList());
@@ -134,21 +134,21 @@ public class SiegeMapLoader {
         metadata.getRegions("flag").forEach(region -> {
             BlockBounds bounds = region.getBounds();
             NbtCompound data = region.getData();
-            String id = data.getString("id");
-            String name = data.getString("name");
+            String id = data.getString("id", "");
+            String name = data.getString("name", "");
             GameTeam team = parseTeam(data);
 
             SiegeFlag flag = new SiegeFlag(id, name, team, bounds);
-            if (data.contains("capturable") && !data.getBoolean("capturable")) {
+            if (data.contains("capturable") && !data.getBoolean("capturable", false)) {
                 flag.capturable = false;
             }
 
-            if (data.contains("plural") && data.getBoolean("plural")) {
+            if (data.contains("plural") && data.getBoolean("plural", false)) {
                 flag.pluralName = true;
             }
 
             if (data.contains("icon")) {
-                String icon = data.getString("icon");
+                String icon = data.getString("icon", "");
                 flag.icon = new ItemStack(Registries.ITEM.get(Identifier.of(icon)));
             }
 
@@ -160,16 +160,16 @@ public class SiegeMapLoader {
 
         metadata.getRegions("flag").forEach(region -> {
             NbtCompound data = region.getData();
-            String flagId = data.getString("id");
+            String flagId = data.getString("id", "");
 
             SiegeFlag flag = flags.get(flagId);
             if (flag == null) {
                 return;
             }
 
-            NbtList prerequisiteFlagsList = data.getList("prerequisite_flags", NbtElement.STRING_TYPE);
+            NbtList prerequisiteFlagsList = data.getListOrEmpty("prerequisite_flags");
             for (int i = 0; i < prerequisiteFlagsList.size(); i++) {
-                String prerequisiteId = prerequisiteFlagsList.getString(i);
+                String prerequisiteId = prerequisiteFlagsList.getString(i, "");
 
                 SiegeFlag prerequisite = flags.get(prerequisiteId);
                 if (prerequisite == null) {
@@ -180,9 +180,9 @@ public class SiegeMapLoader {
                 flag.prerequisiteFlags.add(prerequisite);
             }
 
-            NbtList recapturePrerequisites = data.getList("recapture_prerequisites", NbtElement.STRING_TYPE);
+            NbtList recapturePrerequisites = data.getListOrEmpty("recapture_prerequisites");
             for (int i = 0; i < recapturePrerequisites.size(); i++) {
-                String prerequisiteId = recapturePrerequisites.getString(i);
+                String prerequisiteId = recapturePrerequisites.getString(i, "");
 
                 SiegeFlag prerequisite = flags.get(prerequisiteId);
                 if (prerequisite == null) {
@@ -194,17 +194,17 @@ public class SiegeMapLoader {
             }
 
             flag.flagIndicatorBlocks = metadata.getRegions("flag_indicator")
-                    .filter(r -> flagId.equalsIgnoreCase(r.getData().getString("id")))
+                    .filter(r -> flagId.equalsIgnoreCase(r.getData().getString("id", "")))
                     .map(TemplateRegion::getBounds)
                     .collect(Collectors.toList());
         });
 
         metadata.getRegions("respawn").forEach(region -> {
             NbtCompound data = region.getData();
-            String flagId = data.getString("id");
+            String flagId = data.getString("id", "");
             SiegeFlag flag = flags.get(flagId);
             if (flag != null) {
-                float yaw = data.getFloat("yaw");
+                float yaw = data.getFloat("yaw", 0);
                 SiegeSpawn respawn = new SiegeSpawn(region.getBounds(), yaw);
 
                 GameTeam team = parseOptionalTeam(data);
@@ -216,7 +216,7 @@ public class SiegeMapLoader {
                     flag.defenderRespawn = flag.attackerRespawn = respawn;
                 }
 
-                if (data.contains("starting_spawn") && data.getBoolean("starting_spawn")) {
+                if (data.contains("starting_spawn") && data.getBoolean("starting_spawn", false)) {
                     if (flag.team == SiegeTeams.DEFENDERS) {
                         map.defenderFirstSpawn = respawn;
                     } else {
@@ -244,8 +244,8 @@ public class SiegeMapLoader {
                 .map(region -> {
                     NbtCompound data = region.getData();
 
-                    String gateId = data.getString("id");
-                    String flagIdRaw = data.getString("flag");
+                    String gateId = data.getString("id", "");
+                    String flagIdRaw = data.getString("flag", "");
                     final String flagId = flagIdRaw.isEmpty() ? gateId : flagIdRaw;
 
                     SiegeFlag flag = flags.get(flagId);
@@ -260,7 +260,7 @@ public class SiegeMapLoader {
                     }
 
                     TemplateRegion portcullisRegion = metadata.getRegions("portcullis")
-                            .filter(r -> gateId.equalsIgnoreCase(r.getData().getString("id")))
+                            .filter(r -> gateId.equalsIgnoreCase(r.getData().getString("id", "")))
                             .findFirst()
                             .orElseThrow(() -> {
                                 Siege.LOGGER.error("Gate \"{}\" missing portcullis!", gateId);
@@ -268,28 +268,28 @@ public class SiegeMapLoader {
                             });
 
                     NbtCompound portcullisData = portcullisRegion.getData();
-                    int retractHeight = portcullisData.getInt("retract_height");
+                    int retractHeight = portcullisData.getInt("retract_height", 0);
 
                     int repairHealthThreshold = 50;
 
                     if (portcullisData.contains("repair_health_threshold")) {
-                        repairHealthThreshold = portcullisData.getInt("repair_health_threshold");
+                        repairHealthThreshold = portcullisData.getInt("repair_health_threshold",0);
                     }
 
                     int maxHealth = 100;
 
                     if (portcullisData.contains("max_health")) {
-                        repairHealthThreshold = portcullisData.getInt("max_health");
+                        repairHealthThreshold = portcullisData.getInt("max_health", 0);
                     }
 
                     BlockBounds brace = metadata.getRegions("gate_brace")
-                            .filter(r -> gateId.equalsIgnoreCase(r.getData().getString("id")))
+                            .filter(r -> gateId.equalsIgnoreCase(r.getData().getString("id", "")))
                             .map(TemplateRegion::getBounds)
                             .findFirst()
                             .orElse(null);
 
-                    var name = data.getString("name");
-                    var plural = data.getBoolean("plural");
+                    var name = data.getString("name", "");
+                    var plural = data.getBoolean("plural", false);
 
                     if (name.isEmpty()) {
                         name = flag.name;
@@ -312,7 +312,7 @@ public class SiegeMapLoader {
     }
 
     private static GameTeam parseTeam(NbtCompound data) {
-        String teamName = data.getString("team").toLowerCase();
+        String teamName = data.getString("team", "").toLowerCase();
         GameTeam team = SiegeTeams.byKey(teamName);
         if (team == null) {
             Siege.LOGGER.error("Unknown team \"{}\"", teamName);
@@ -323,12 +323,12 @@ public class SiegeMapLoader {
 
     @Nullable
     private static GameTeam parseOptionalTeam(NbtCompound data) {
-        String teamName = data.getString("team");
+        String teamName = data.getString("team", "");
         return SiegeTeams.byKey(teamName);
     }
 
     private static SiegeKit parseKitStandType(NbtCompound data) {
-        String kitName = data.getString("type");
+        String kitName = data.getString("type", "");
         return switch (kitName) {
             case "bow" -> SiegeKit.ARCHER;
             case "sword" -> SiegeKit.SOLDIER;
