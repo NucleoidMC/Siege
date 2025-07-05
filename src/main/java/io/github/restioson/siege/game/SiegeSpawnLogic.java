@@ -5,6 +5,9 @@ import net.minecraft.entity.player.HungerManager;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.NbtReadView;
+import net.minecraft.storage.NbtWriteView;
+import net.minecraft.util.ErrorReporter;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -36,10 +39,10 @@ public class SiegeSpawnLogic {
     }
 
     private static void resetHunger(ServerPlayerEntity player) {
-        NbtCompound resetTag = new NbtCompound();
+        var resetTag = NbtWriteView.create(ErrorReporter.EMPTY, player.getRegistryManager());
         HungerManager hungerManager = new HungerManager();
-        hungerManager.writeNbt(resetTag);
-        player.getHungerManager().readNbt(resetTag);
+        hungerManager.writeData(resetTag);
+        player.getHungerManager().readData(NbtReadView.create(ErrorReporter.EMPTY, player.getRegistryManager(), resetTag.getNbt()));
     }
 
     public static Vec3d choosePos(Random random, BlockBounds bounds, float aboveGround) {
