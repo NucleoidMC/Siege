@@ -4,10 +4,11 @@ import io.github.restioson.siege.game.SiegeConfig;
 import io.github.restioson.siege.game.SiegeWaiting;
 import io.github.restioson.siege.item.SiegeItems;
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xyz.nucleoid.plasmid.api.game.GameType;
+import xyz.nucleoid.plasmid.api.game.GameTypes;
 
 public class Siege implements ModInitializer {
     public static final String ID = "siege";
@@ -17,8 +18,8 @@ public class Siege implements ModInitializer {
     public void onInitialize() {
         SiegeItems.register();
 
-        GameType.register(
-                Identifier.of(ID, "siege"),
+        GameTypes.register(
+                Identifier.fromNamespaceAndPath(ID, "siege"),
                 SiegeConfig.CODEC,
                 SiegeWaiting::open
         );

@@ -1,31 +1,31 @@
 package io.github.restioson.siege.game;
 
-import net.minecraft.scoreboard.AbstractTeam;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.DyeColor;
 import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.plasmid.api.game.GameActivity;
 import xyz.nucleoid.plasmid.api.game.common.team.*;
 
 import java.util.List;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.scores.Team;
 
 public final class SiegeTeams {
     public static final GameTeam ATTACKERS = new GameTeam(
             new GameTeamKey("attackers"),
             GameTeamConfig.builder()
-                    .setName(Text.literal("Attackers"))
+                    .setName(Component.literal("Attackers"))
                     .setColors(GameTeamConfig.Colors.from(DyeColor.RED))
-                    .setCollision(AbstractTeam.CollisionRule.NEVER)
+                    .setCollision(Team.CollisionRule.NEVER)
                     .setFriendlyFire(false)
                     .build()
     );
     public static final GameTeam DEFENDERS = new GameTeam(
             new GameTeamKey("defenders"),
             GameTeamConfig.builder()
-                    .setName(Text.literal("Defenders"))
+                    .setName(Component.literal("Defenders"))
                     .setColors(GameTeamConfig.Colors.from(DyeColor.BLUE))
-                    .setCollision(AbstractTeam.CollisionRule.NEVER)
+                    .setCollision(Team.CollisionRule.NEVER)
                     .setFriendlyFire(false)
                     .build()
     );
@@ -57,11 +57,11 @@ public final class SiegeTeams {
         };
     }
 
-    public void addPlayer(ServerPlayerEntity player, GameTeamKey team) {
+    public void addPlayer(ServerPlayer player, GameTeamKey team) {
         this.teams.addPlayerTo(player, team);
     }
 
-    public void removePlayer(ServerPlayerEntity player, GameTeamKey team) {
+    public void removePlayer(ServerPlayer player, GameTeamKey team) {
         this.teams.removePlayerFrom(player, team);
     }
 
@@ -69,7 +69,7 @@ public final class SiegeTeams {
         return this.teams.getSmallestTeam();
     }
 
-    public static Text nameOf(GameTeam team) {
-        return Text.translatable("game.siege.team." + team.key().id());
+    public static Component nameOf(GameTeam team) {
+        return Component.translatable("game.siege.team." + team.key().id());
     }
 }

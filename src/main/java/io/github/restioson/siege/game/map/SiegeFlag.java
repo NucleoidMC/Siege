@@ -5,25 +5,26 @@ import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.active.SiegeCaptureLogic;
 import io.github.restioson.siege.game.active.capturing.CapturingState;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.block.*;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.entity.boss.ServerBossBar;
-import net.minecraft.item.ItemStack;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.BossEvent;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.BannerBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.WallBannerBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public final class SiegeFlag {
     public final String id;
@@ -54,8 +55,8 @@ public final class SiegeFlag {
     public List<SiegeFlag> prerequisiteFlags = new ArrayList<>();
     public List<SiegeFlag> recapturePrerequisites = new ArrayList<>();
 
-    public final ServerBossBar captureBar = new ServerBossBar(Text.literal("Capturing"), BossBar.Color.RED, BossBar.Style.NOTCHED_10);
-    private final Set<ServerPlayerEntity> capturingPlayers = new ReferenceOpenHashSet<>();
+    public final ServerBossEvent captureBar = new ServerBossEvent(UUID.randomUUID(), Component.literal("Capturing"), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.NOTCHED_10);
+    private final Set<ServerPlayer> capturingPlayers = new ReferenceOpenHashSet<>();
 
     public SiegeFlag(String id, String name, GameTeam team, BlockBounds bounds) {
         this.id = id;
@@ -139,8 +140,8 @@ public final class SiegeFlag {
         return false;
     }
 
-    public void updateCapturingPlayers(Collection<ServerPlayerEntity> players) {
-        for (ServerPlayerEntity player : players) {
+    public void updateCapturingPlayers(Collection<ServerPlayer> players) {
+        for (ServerPlayer player : players) {
             if (this.capturingPlayers.add(player)) {
                 this.captureBar.addPlayer(player);
             }
@@ -163,7 +164,7 @@ public final class SiegeFlag {
         if (this.capturingState != null) {
             this.captureBar.setVisible(true);
             this.captureBar.setName(this.capturingState.getTitle());
-            this.captureBar.setPercent(this.captureFraction());
+            this.captureBar.setProgress(this.captureFraction());
             this.captureBar.setColor(this.capturingState.getCaptureBarColorForTeam(SiegeTeams.opposite(this.team)));
         } else {
             this.captureBar.setVisible(false);
@@ -171,7 +172,7 @@ public final class SiegeFlag {
     }
 
     public void closeCaptureBar() {
-        this.captureBar.clearPlayers();
+        this.captureBar.removeAllPlayers();
         this.captureBar.setVisible(false);
     }
 
@@ -184,7 +185,7 @@ public final class SiegeFlag {
         return this.gates.stream().anyMatch(gate -> gate.underAttack(time));
     }
 
-    public void setTeamBlocks(ServerWorld world, GameTeam captureTeam) {
+    public void setTeamBlocks(ServerLevel world, GameTeam captureTeam) {
         for (BlockBounds blockBounds : this.flagIndicatorBlocks) {
             for (BlockPos blockPos : blockBounds) {
                 BlockState blockState = world.getBlockState(blockPos);
@@ -198,7 +199,7 @@ public final class SiegeFlag {
                         wool = Blocks.RED_WOOL;
                     }
 
-                    world.setBlockState(blockPos, wool.getDefaultState());
+                    world.setBlockAndUpdate(blockPos, wool.defaultBlockState());
                 }
 
                 if (block == Blocks.BLUE_WALL_BANNER || block == Blocks.RED_WALL_BANNER) {
@@ -210,8 +211,8 @@ public final class SiegeFlag {
                         banner = Blocks.RED_WALL_BANNER;
                     }
 
-                    BlockState newBlockState = banner.getDefaultState().with(WallBannerBlock.FACING, blockState.get(WallBannerBlock.FACING));
-                    world.setBlockState(blockPos, newBlockState);
+                    BlockState newBlockState = banner.defaultBlockState().setValue(WallBannerBlock.FACING, blockState.getValue(WallBannerBlock.FACING));
+                    world.setBlockAndUpdate(blockPos, newBlockState);
                 }
 
                 if (block == Blocks.BLUE_BANNER || block == Blocks.RED_BANNER) {
@@ -223,8 +224,8 @@ public final class SiegeFlag {
                         banner = Blocks.RED_BANNER;
                     }
 
-                    BlockState newBlockState = banner.getDefaultState().with(BannerBlock.ROTATION, blockState.get(BannerBlock.ROTATION));
-                    world.setBlockState(blockPos, newBlockState);
+                    BlockState newBlockState = banner.defaultBlockState().setValue(BannerBlock.ROTATION, blockState.getValue(BannerBlock.ROTATION));
+                    world.setBlockAndUpdate(blockPos, newBlockState);
                 }
 
                 if (block == Blocks.BLUE_CONCRETE || block == Blocks.RED_CONCRETE) {
@@ -236,28 +237,28 @@ public final class SiegeFlag {
                         concrete = Blocks.RED_CONCRETE;
                     }
 
-                    BlockState newBlockState = concrete.getDefaultState();
-                    world.setBlockState(blockPos, newBlockState);
+                    BlockState newBlockState = concrete.defaultBlockState();
+                    world.setBlockAndUpdate(blockPos, newBlockState);
                 }
             }
 
         }
     }
 
-    public void spawnParticles(ServerWorld world, ParticleEffect effect) {
+    public void spawnParticles(ServerLevel world, ParticleOptions effect) {
         for (int i = 0; i < 24; i++) {
-            var pos = this.bounds.sampleBlock(world.random);
-            if (!world.isAir(pos)) {
+            var pos = this.bounds.sampleBlock(world.getRandom());
+            if (!world.isEmptyBlock(pos)) {
                 continue;
             }
 
-            world.spawnParticles(effect, pos.getX(), pos.getY(), pos.getZ(), 1, 0.0D, 0.0D, 0.0D, 0);
+            world.sendParticles(effect, pos.getX(), pos.getY(), pos.getZ(), 1, 0.0D, 0.0D, 0.0D, 0);
         }
     }
 
-    public void playSound(ServerWorld world, SoundEvent event, float pitch) {
+    public void playSound(ServerLevel world, SoundEvent event, float pitch) {
         var centre = this.bounds.center();
-        world.playSound(null, centre.x, centre.y, centre.z, event, SoundCategory.NEUTRAL, 2.0f, pitch);
+        world.playSound(null, centre.x, centre.y, centre.z, event, SoundSource.NEUTRAL, 2.0f, pitch);
     }
 
     /**

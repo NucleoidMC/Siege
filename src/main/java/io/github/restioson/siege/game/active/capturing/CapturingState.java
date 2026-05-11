@@ -1,12 +1,12 @@
 package io.github.restioson.siege.game.active.capturing;
 
 import io.github.restioson.siege.game.map.SiegeFlag;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.text.Text;
 import org.jetbrains.annotations.NotNull;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 
 import java.util.List;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.BossEvent;
 
 public interface CapturingState {
     static CapturingState capturing() {
@@ -29,12 +29,12 @@ public interface CapturingState {
         return new PrerequisitesRequired(prerequisites);
     }
 
-    Text getTitle();
+    Component getTitle();
 
     boolean isUnderAttack();
 
     @NotNull
-    BossBar.Color getCaptureBarColorForTeam(GameTeam team);
+    BossEvent.BossBarColor getCaptureBarColorForTeam(GameTeam team);
 
     @NotNull
     CapturingStateSidebarBlink getBlink();

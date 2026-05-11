@@ -1,12 +1,12 @@
 package io.github.restioson.siege.game.active.capturing;
 
 import io.github.restioson.siege.game.map.SiegeFlag;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.text.Text;
 import org.jetbrains.annotations.NotNull;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 
 import java.util.List;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.BossEvent;
 
 class PrerequisitesRequired implements CapturingState {
     private final List<SiegeFlag> prerequisites;
@@ -16,8 +16,8 @@ class PrerequisitesRequired implements CapturingState {
     }
 
     @Override
-    public Text getTitle() {
-        var text = Text.translatable("game.siege.flag.prerequisite_required");
+    public Component getTitle() {
+        var text = Component.translatable("game.siege.flag.prerequisite_required");
         text.append(" ");
 
         for (int i = 0; i < this.prerequisites.size(); i++) {
@@ -29,7 +29,7 @@ class PrerequisitesRequired implements CapturingState {
                 }
 
                 if (i == this.prerequisites.size() - 2) {
-                    text.append(Text.translatable("game.siege.flag.prerequisite_required.and"));
+                    text.append(Component.translatable("game.siege.flag.prerequisite_required.and"));
                     text.append(" ");
                 }
             }
@@ -44,8 +44,8 @@ class PrerequisitesRequired implements CapturingState {
     }
 
     @Override
-    public @NotNull BossBar.Color getCaptureBarColorForTeam(GameTeam team) {
-        return BossBar.Color.RED;
+    public @NotNull BossEvent.BossBarColor getCaptureBarColorForTeam(GameTeam team) {
+        return BossEvent.BossBarColor.RED;
     }
 
     @Override

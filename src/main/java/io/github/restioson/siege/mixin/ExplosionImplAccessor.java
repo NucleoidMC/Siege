@@ -1,12 +1,12 @@
 package io.github.restioson.siege.mixin;
 
-import net.minecraft.world.explosion.ExplosionBehavior;
-import net.minecraft.world.explosion.ExplosionImpl;
+import net.minecraft.world.level.ExplosionDamageCalculator;
+import net.minecraft.world.level.ServerExplosion;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(ExplosionImpl.class)
+@Mixin(ServerExplosion.class)
 public interface ExplosionImplAccessor {
     @Accessor
-    ExplosionBehavior getBehavior();
+    ExplosionDamageCalculator getDamageCalculator();
 }

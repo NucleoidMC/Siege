@@ -1,10 +1,10 @@
 package io.github.restioson.siege.game.map;
 
 import io.github.restioson.siege.game.active.SiegeActive;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.plasmid.api.util.PlayerRef;
@@ -59,23 +59,23 @@ public class SiegeGate {
         }
     }
 
-    public void broadcastHealth(ServerPlayerEntity initiator, SiegeActive active, ServerWorld world) {
+    public void broadcastHealth(ServerPlayer initiator, SiegeActive active, ServerLevel world) {
         String msg = this.bashedOpen ?
                 String.format("%s more blocks to repair gate", this.blocksToRepair()) :
                 String.format("Gate health: %s/%s", this.health, this.maxHealth);
 
-        Text text = Text.literal(msg).formatted(Formatting.DARK_GREEN);
-        initiator.sendMessage(text, true);
+        Component text = Component.literal(msg).withStyle(ChatFormatting.DARK_GREEN);
+        initiator.sendSystemMessage(text, true);
         for (PlayerRef ref : active.participants.keySet()) {
             ref.ifOnline(world, p -> {
-                if (this.gateOpen.contains(p.getBlockPos()) && p != initiator) {
-                    p.sendMessage(text, true);
+                if (this.gateOpen.contains(p.blockPosition()) && p != initiator) {
+                    p.sendSystemMessage(text, true);
                 }
             });
         }
     }
 
-    public boolean tickOpen(ServerWorld world) {
+    public boolean tickOpen(ServerLevel world) {
         if (this.openSlide >= this.slider.getMaxOffset()) {
             return false;
         }
@@ -83,7 +83,7 @@ public class SiegeGate {
         return true;
     }
 
-    public boolean tickClose(ServerWorld world) {
+    public boolean tickClose(ServerLevel world) {
         if (this.openSlide <= 0) {
             return false;
         }

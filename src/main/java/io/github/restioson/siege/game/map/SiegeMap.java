@@ -6,15 +6,15 @@ import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.active.SiegeActive;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.minecraft.entity.vehicle.BoatEntity;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.TypeFilter;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.gen.chunk.ChunkGenerator;
+import net.minecraft.world.entity.vehicle.boat.Boat;
+import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
-import xyz.nucleoid.plasmid.api.game.world.generator.TemplateChunkGenerator;
+import xyz.nucleoid.plasmid.api.game.level.generator.TemplateChunkGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,14 +68,14 @@ public class SiegeMap {
     public void startGame(SiegeActive active) {
         for (SiegeKitStandData stand : this.kitStands) {
             SiegeKitStandEntity standEntity = new SiegeKitStandEntity(active, stand);
-            active.world.spawnEntity(standEntity);
+            active.world.addFreshEntity(standEntity);
 
             if (standEntity.controllingFlag != null) {
                 standEntity.controllingFlag.kitStands.add(standEntity);
             }
         }
 
-        var vehicles = active.world.getEntitiesByType(TypeFilter.instanceOf(BoatEntity.class), e -> true);
+        var vehicles = active.world.getEntities(EntityTypeTest.forClass(Boat.class), e -> true);
         for (var vehicle : vehicles) {
             ((SiegeVehicleExt) vehicle).siege$setInSiegeGame();
         }

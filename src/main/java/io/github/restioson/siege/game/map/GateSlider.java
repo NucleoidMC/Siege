@@ -1,15 +1,15 @@
 package io.github.restioson.siege.game.map;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.FenceBlock;
-import net.minecraft.block.HorizontalConnectingBlock;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import xyz.nucleoid.map_templates.BlockBounds;
 
 import java.util.Arrays;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CrossCollisionBlock;
+import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.state.BlockState;
 
 public final class GateSlider {
     private final BlockBounds bounds;
@@ -28,7 +28,7 @@ public final class GateSlider {
         this.height = bounds.max().getY() - bounds.min().getY() + 1;
     }
 
-    private Slice[] getSlices(ServerWorld world) {
+    private Slice[] getSlices(ServerLevel world) {
         if (this.slices != null) {
             return this.slices;
         }
@@ -42,7 +42,7 @@ public final class GateSlider {
         this.slices = new Slice[this.height];
         this.emptySlice = new Slice(sizeX, sizeZ);
 
-        BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
 
         for (int y = 0; y < this.height; y++) {
             Slice slice = new Slice(sizeX, sizeZ);
@@ -62,7 +62,7 @@ public final class GateSlider {
         return this.slices;
     }
 
-    private Slice getSlice(ServerWorld world, int y) {
+    private Slice getSlice(ServerLevel world, int y) {
         Slice[] slices = this.getSlices(world);
         if (y < 0 || y >= slices.length) {
             return this.emptySlice;
@@ -70,8 +70,8 @@ public final class GateSlider {
         return slices[y];
     }
 
-    public void set(ServerWorld world, int offset) {
-        offset = MathHelper.clamp(offset, 0, this.maxOffset);
+    public void set(ServerLevel world, int offset) {
+        offset = Mth.clamp(offset, 0, this.maxOffset);
         if (this.offset == offset) {
             return;
         }
@@ -88,17 +88,17 @@ public final class GateSlider {
         for (BlockPos pos : this.bounds) {
             var state = world.getBlockState(pos);
             if (state.getBlock() instanceof FenceBlock fence) {
-                for (var entry : HorizontalConnectingBlock.FACING_PROPERTIES.entrySet()) {
+                for (var entry : CrossCollisionBlock.PROPERTY_BY_DIRECTION.entrySet()) {
                     var dir = entry.getKey();
                     var prop = entry.getValue();
-                    var neighbourPos = pos.offset(dir, 1);
+                    var neighbourPos = pos.relative(dir, 1);
                     var neighbourBlock = world.getBlockState(neighbourPos);
 
-                    boolean neighbourSideConnectable = neighbourBlock.isSideSolidFullSquare(world, neighbourPos, dir.getOpposite());
-                    boolean connects = fence.canConnect(neighbourBlock, neighbourSideConnectable, dir.getOpposite());
+                    boolean neighbourSideConnectable = neighbourBlock.isFaceSturdy(world, neighbourPos, dir.getOpposite());
+                    boolean connects = fence.connectsTo(neighbourBlock, neighbourSideConnectable, dir.getOpposite());
 
-                    state = state.with(prop, connects);
-                    world.setBlockState(pos, state);
+                    state = state.setValue(prop, connects);
+                    world.setBlockAndUpdate(pos, state);
                 }
             }
         }
@@ -108,11 +108,11 @@ public final class GateSlider {
         return this.maxOffset;
     }
 
-    public void setOpen(ServerWorld world) {
+    public void setOpen(ServerLevel world) {
         this.set(world, this.getMaxOffset());
     }
 
-    public void setClosed(ServerWorld world) {
+    public void setClosed(ServerLevel world) {
         this.set(world, 0);
     }
 
@@ -123,7 +123,7 @@ public final class GateSlider {
 
         Slice(int sizeX, int sizeZ) {
             this.states = new BlockState[sizeX * sizeZ];
-            Arrays.fill(this.states, Blocks.AIR.getDefaultState());
+            Arrays.fill(this.states, Blocks.AIR.defaultBlockState());
 
             this.sizeX = sizeX;
             this.sizeZ = sizeZ;
@@ -133,14 +133,14 @@ public final class GateSlider {
             this.states[this.index(x, z)] = state;
         }
 
-        void applyAt(ServerWorld world, BlockPos min, int y) {
-            BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+        void applyAt(ServerLevel world, BlockPos min, int y) {
+            BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
 
             for (int z = 0; z < this.sizeZ; z++) {
                 for (int x = 0; x < this.sizeX; x++) {
-                    mutablePos.set(min, x, y, z);
+                    mutablePos.setWithOffset(min, x, y, z);
                     BlockState state = this.get(x, z);
-                    world.setBlockState(mutablePos, state);
+                    world.setBlockAndUpdate(mutablePos, state);
                 }
             }
         }

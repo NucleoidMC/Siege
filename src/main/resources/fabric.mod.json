@@ -19,10 +19,10 @@
     ]
   },
   "depends": {
-    "fabricloader": ">=0.15",
-    "fabric": "*",
-    "minecraft": ">=1.21.4",
-    "plasmid": "0.6.x",
-    "java": ">=21"
+    "fabricloader": ">=0.18",
+    "fabric-api": "*",
+    "minecraft": ">=26.1-",
+    "plasmid": "0.7.x",
+    "java": ">=25"
   }
 }

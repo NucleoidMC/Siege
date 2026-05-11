@@ -4,23 +4,20 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
+import io.github.restioson.siege.Siege;
 import io.github.restioson.siege.game.active.SiegeActive;
 import io.github.restioson.siege.game.active.WarpSelectionUi;
 import io.github.restioson.siege.game.map.SiegeMap;
 import io.github.restioson.siege.game.map.SiegeMapLoader;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.world.GameMode;
-import xyz.nucleoid.fantasy.RuntimeWorldConfig;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.clock.ClockState;
+import net.minecraft.world.clock.PackedClockStates;
+import net.minecraft.world.clock.WorldClocks;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.plasmid.api.game.GameOpenContext;
 import xyz.nucleoid.plasmid.api.game.GameOpenProcedure;
 import xyz.nucleoid.plasmid.api.game.GameResult;
@@ -37,14 +34,23 @@ import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
 import xyz.nucleoid.plasmid.api.game.player.JoinIntent;
 import xyz.nucleoid.plasmid.api.game.player.JoinOffer;
 import xyz.nucleoid.plasmid.api.util.PlayerRef;
+import xyz.nucleoid.plasmid.api.util.PlayerUtil;
 import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.item.ItemUseEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
 import java.util.Map;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.level.GameType;
 
 public class SiegeWaiting {
-    private final ServerWorld world;
+    private final ServerLevel world;
     private final GameSpace gameSpace;
     private final SiegeMap map;
     private final SiegeConfig config;
@@ -52,7 +58,7 @@ public class SiegeWaiting {
     private final Map<PlayerRef, SiegeKit> kitSelections;
     private final TeamSelectionLobby teamSelection;
 
-    private SiegeWaiting(ServerWorld world, GameSpace gameSpace, SiegeMap map, SiegeConfig config, TeamSelectionLobby teamSelection) {
+    private SiegeWaiting(ServerLevel world, GameSpace gameSpace, SiegeMap map, SiegeConfig config, TeamSelectionLobby teamSelection) {
         this.world = world;
         this.gameSpace = gameSpace;
         this.map = map;
@@ -65,11 +71,14 @@ public class SiegeWaiting {
         var config = context.config();
         SiegeMap map = SiegeMapLoader.load(context.server(), config.map());
 
-        RuntimeWorldConfig worldConfig = new RuntimeWorldConfig()
+        RuntimeLevelConfig worldConfig = new RuntimeLevelConfig()
                 .setGenerator(map.asGenerator(context.server()))
-                .setTimeOfDay(map.time);
+                .setDimensionType(ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.fromNamespaceAndPath(Siege.ID, "default")))
+                .setClockManagerConstructor(new PackedClockStates(
+                        Map.of(context.server().registryAccess().getOrThrow(WorldClocks.OVERWORLD), new ClockState(map.time, 0, 0, true)
+                )));
 
-        return context.openWithWorld(worldConfig, (activity, world) -> {
+        return context.openWithLevel(worldConfig, (activity, world) -> {
             GameWaitingLobby.addTo(activity, config.players());
 
             TeamSelectionLobby teamSelection = TeamSelectionLobby.addTo(activity, SiegeTeams.TEAMS);
@@ -85,7 +94,7 @@ public class SiegeWaiting {
         });
     }
 
-    private void buildLayout(WaitingLobbyUiLayout layout, ServerPlayerEntity player) {
+    private void buildLayout(WaitingLobbyUiLayout layout, ServerPlayer player) {
         if (this.gameSpace.getPlayers().spectators().contains(player)) {
             return;
         }
@@ -94,12 +103,12 @@ public class SiegeWaiting {
                 .setCallback(() -> {
                     SimpleGui ui = WarpSelectionUi.createKitSelect(player, this.kitSelections.get(ref), selectedKit -> {
                         this.kitSelections.put(ref, selectedKit);
-                        var msg = Text.translatable("game.siege.kit.selected")
+                        var msg = Component.translatable("game.siege.kit.selected")
                                 .append(" ")
                                 .append(selectedKit.getName())
-                                .formatted(Formatting.GREEN);
-                        player.sendMessage((msg), true);
-                        player.playSoundToPlayer(SoundEvents.ITEM_ARMOR_EQUIP_GENERIC.value(), SoundCategory.NEUTRAL, 1.0F, 1.0F);
+                                .withStyle(ChatFormatting.GREEN);
+                        player.sendSystemMessage((msg), true);
+                        PlayerUtil.playSoundToPlayer(player, SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.NEUTRAL, 1.0F, 1.0F);
                     });
 
                     ui.open();
@@ -107,11 +116,11 @@ public class SiegeWaiting {
                 .build());
     }
 
-    private void onAddPlayer(ServerPlayerEntity player) {
+    private void onAddPlayer(ServerPlayer player) {
     }
 
     private GameResult requestStart() {
-        Multimap<GameTeamKey, ServerPlayerEntity> players = HashMultimap.create();
+        Multimap<GameTeamKey, ServerPlayer> players = HashMultimap.create();
         this.teamSelection.allocate(this.gameSpace.getPlayers(), players::put);
 
         SiegeActive.open(this.world, this.gameSpace, this.map, this.config, players, this.kitSelections);
@@ -120,12 +129,12 @@ public class SiegeWaiting {
     }
 
     private JoinAcceptorResult acceptPlayer(JoinAcceptor offer) {
-        return SiegeSpawnLogic.acceptPlayer(offer, this.world, this.map.waitingSpawn, GameMode.ADVENTURE);
+        return SiegeSpawnLogic.acceptPlayer(offer, this.world, this.map.waitingSpawn, GameType.ADVENTURE);
     }
 
-    private EventResult onPlayerDeath(ServerPlayerEntity player, DamageSource source) {
+    private EventResult onPlayerDeath(ServerPlayer player, DamageSource source) {
         player.setHealth(20.0F);
-        SiegeSpawnLogic.resetPlayer(player, GameMode.ADVENTURE);
+        SiegeSpawnLogic.resetPlayer(player, GameType.ADVENTURE);
         SiegeSpawnLogic.spawnPlayer(player, this.map.waitingSpawn, this.world);
         return EventResult.DENY;
     }

@@ -2,8 +2,8 @@ package io.github.restioson.siege.game.active;
 
 import io.github.restioson.siege.game.SiegeKit;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 
@@ -38,7 +38,7 @@ public class SiegePlayer {
         this.resources.defaultReturnValue(0);
     }
 
-    public ServerPlayerEntity attacker(long time, ServerWorld world) {
+    public ServerPlayer attacker(long time, ServerLevel world) {
         if (this.lastTimeWasAttacked != null) {
             return this.lastTimeWasAttacked.isValid(time) ? this.lastTimeWasAttacked.player.getEntity(world) : null;
         } else {

@@ -1,58 +1,58 @@
 package io.github.restioson.siege.game.active;
 
 import io.github.restioson.siege.game.SiegeTeams;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.api.game.player.PlayerSet;
 import xyz.nucleoid.plasmid.api.util.Scheduler;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
 public class SiegeDialogueLogic {
-    private static Text leaderName(GameTeam team) {
-        return Text.translatable("game.siege.character." + team.key().id());
+    private static Component leaderName(GameTeam team) {
+        return Component.translatable("game.siege.character." + team.key().id());
     }
 
     private static SoundEvent soundForLeader(GameTeam team) {
-        return team == SiegeTeams.ATTACKERS ? SoundEvents.ENTITY_RAVAGER_AMBIENT : SoundEvents.ENTITY_VILLAGER_AMBIENT;
+        return team == SiegeTeams.ATTACKERS ? SoundEvents.RAVAGER_AMBIENT : SoundEvents.VILLAGER_AMBIENT;
     }
 
     private static SoundEvent soundForTeam(GameTeam team) {
-        return team == SiegeTeams.ATTACKERS ? SoundEvents.ENTITY_PILLAGER_CELEBRATE :
-                SoundEvents.ENTITY_VILLAGER_CELEBRATE;
+        return team == SiegeTeams.ATTACKERS ? SoundEvents.PILLAGER_CELEBRATE :
+                SoundEvents.VILLAGER_CELEBRATE;
     }
 
     private static void leaderToPlayers(PlayerSet players, GameTeam team, String keyPrefix) {
-        var msg = Text.empty()
+        var msg = Component.empty()
                 .append(
-                        Text.literal("<")
+                        Component.literal("<")
                                 .append(leaderName(team))
                                 .append("> ")
-                                .formatted(team.config().chatFormatting())
+                                .withStyle(team.config().chatFormatting())
                 )
-                .append(Text.translatable("%s.%s.leader".formatted(keyPrefix, team.key().id())))
-                .formatted(Formatting.BOLD);
+                .append(Component.translatable("%s.%s.leader".formatted(keyPrefix, team.key().id())))
+                .withStyle(ChatFormatting.BOLD);
         players.sendMessage(msg);
-        players.playSound(SiegeDialogueLogic.soundForLeader(team), SoundCategory.NEUTRAL, 64.0f, 1.0f);
+        players.playSound(SiegeDialogueLogic.soundForLeader(team), SoundSource.NEUTRAL, 64.0f, 1.0f);
     }
 
     private static void chorusToPlayers(PlayerSet players, GameTeam team, String keyPrefix) {
-        var msg = Text.empty()
+        var msg = Component.empty()
                 .append(
-                        Text.literal("<")
+                        Component.literal("<")
                                 .append(SiegeTeams.nameOf(team))
                                 .append("> ")
-                                .formatted(team.config().chatFormatting())
+                                .withStyle(team.config().chatFormatting())
                 )
-                .append(Text.translatable("%s.%s.chorus".formatted(keyPrefix, team.key().id())))
-                .formatted(Formatting.BOLD);
+                .append(Component.translatable("%s.%s.chorus".formatted(keyPrefix, team.key().id())))
+                .withStyle(ChatFormatting.BOLD);
 
         players.sendMessage(msg);
-        players.playSound(SiegeDialogueLogic.soundForTeam(team), SoundCategory.NEUTRAL, 64.0f, 1.0f);
+        players.playSound(SiegeDialogueLogic.soundForTeam(team), SoundSource.NEUTRAL, 64.0f, 1.0f);
     }
 
     public static void leadersToTeams(SiegeActive game, String keyPrefix) {

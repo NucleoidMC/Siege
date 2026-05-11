@@ -2,22 +2,25 @@ package io.github.restioson.siege.game.active;
 
 import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.map.SiegeFlag;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.entity.boss.ServerBossBar;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.world.GameMode;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.BossEvent;
+import net.minecraft.world.level.GameType;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
+
+import java.util.UUID;
 
 public class SiegeStageManager {
     private final SiegeActive game;
     private final boolean singlePlayer;
 
-    public final ServerBossBar timerBar = new ServerBossBar(
-            Text.translatable("game.siege.timer.time_left"),
-            BossBar.Color.BLUE,
-            BossBar.Style.PROGRESS
+    public final ServerBossEvent timerBar = new ServerBossEvent(
+            UUID.randomUUID(),
+            Component.translatable("game.siege.timer.time_left"),
+            BossEvent.BossBarColor.BLUE,
+            BossEvent.BossBarOverlay.PROGRESS
     );
     private long closeTime = -1;
     public long startTime = -1;
@@ -46,8 +49,8 @@ public class SiegeStageManager {
         }
 
         if (this.testOvertime(time)) {
-            this.timerBar.setName(Text.translatable("game.siege.timer.overtime").formatted(Formatting.RED));
-            this.timerBar.setPercent(1.0f);
+            this.timerBar.setName(Component.translatable("game.siege.timer.overtime").withStyle(ChatFormatting.RED));
+            this.timerBar.setProgress(1.0f);
             return TickResult.OVERTIME;
         }
 
@@ -80,15 +83,15 @@ public class SiegeStageManager {
         long secondsUntilEnd = ticksTillEnd / 20;
         long minutes = secondsUntilEnd / 60;
         long seconds = secondsUntilEnd % 60;
-        var timerBarText = Text.translatable("game.siege.timer.time_left")
+        var timerBarText = Component.translatable("game.siege.timer.time_left")
                 .append(" ")
                 .append(
-                        Text.literal(String.format("%02d:%02d", minutes, seconds))
-                                .formatted(Formatting.AQUA)
+                        Component.literal(String.format("%02d:%02d", minutes, seconds))
+                                .withStyle(ChatFormatting.AQUA)
                 );
 
         this.timerBar.setName(timerBarText);
-        this.timerBar.setPercent((float) ticksTillEnd / this.maxPotentialTime);
+        this.timerBar.setProgress((float) ticksTillEnd / this.maxPotentialTime);
 
         return TickResult.CONTINUE_TICK;
     }
@@ -110,8 +113,8 @@ public class SiegeStageManager {
     private void triggerFinish(long time) {
         this.closeTimerBar();
 
-        for (ServerPlayerEntity player : this.game.gameSpace.getPlayers()) {
-            player.changeGameMode(GameMode.SPECTATOR);
+        for (ServerPlayer player : this.game.gameSpace.getPlayers()) {
+            player.setGameMode(GameType.SPECTATOR);
         }
 
         this.closeTime = time + (15 * 20);
@@ -131,7 +134,7 @@ public class SiegeStageManager {
     }
 
     private GameTeam getRemainingTeam() {
-        for (ServerPlayerEntity player : this.game.gameSpace.getPlayers()) {
+        for (ServerPlayer player : this.game.gameSpace.getPlayers()) {
             SiegePlayer participant = this.game.participant(player);
             if (participant != null) {
                 return participant.team;
@@ -141,7 +144,7 @@ public class SiegeStageManager {
     }
 
     public void addTime(int secs) {
-        long timeNow = this.game.world.getTime();
+        long timeNow = this.game.world.getGameTime();
         if (timeNow > this.finishTime) {
             this.finishTime = timeNow;
         }
@@ -152,7 +155,7 @@ public class SiegeStageManager {
 
     public void closeTimerBar() {
         this.timerBar.setVisible(false);
-        this.timerBar.clearPlayers();
+        this.timerBar.removeAllPlayers();
     }
 
     public enum TickResult {

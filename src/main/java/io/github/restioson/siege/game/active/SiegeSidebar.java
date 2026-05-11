@@ -3,9 +3,6 @@ package io.github.restioson.siege.game.active;
 import io.github.restioson.siege.game.SiegeConfig;
 import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.map.SiegeFlag;
-import net.minecraft.screen.ScreenTexts;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import xyz.nucleoid.plasmid.api.game.common.GlobalWidgets;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.api.game.common.widget.SidebarWidget;
@@ -13,6 +10,9 @@ import xyz.nucleoid.plasmid.api.game.common.widget.SidebarWidget;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
 
 import static io.github.restioson.siege.game.active.capturing.CapturingStateSidebarBlink.NO_BLINK;
 
@@ -27,8 +27,8 @@ public final class SiegeSidebar {
 
     SiegeSidebar(SiegeActive game, GlobalWidgets widgets) {
         this.game = game;
-        this.widget = widgets.addSidebar(Text.translatable("gameType.siege.siege")
-                .formatted(Formatting.BOLD, Formatting.GOLD, Formatting.UNDERLINE));
+        this.widget = widgets.addSidebar(Component.translatable("gameType.siege.siege")
+                .withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD, ChatFormatting.UNDERLINE));
         this.config = this.game.config;
     }
 
@@ -47,10 +47,10 @@ public final class SiegeSidebar {
         this.widget.set(content -> {
             if (this.config.capturingGiveTimeSecs() > 0) {
                 content.add(
-                        Text.translatable("game.siege.quick.sidebar").formatted(Formatting.GOLD),
-                        Text.literal(this.config.giveTimeFormatted()).formatted(Formatting.AQUA)
+                        Component.translatable("game.siege.quick.sidebar").withStyle(ChatFormatting.GOLD),
+                        Component.literal(this.config.giveTimeFormatted()).withStyle(ChatFormatting.AQUA)
                 );
-                content.add(ScreenTexts.EMPTY);
+                content.add(CommonComponents.EMPTY);
             }
 
             List<SiegeFlag> flags = new ArrayList<>(this.game.map.flags);
@@ -65,7 +65,7 @@ public final class SiegeSidebar {
                 }
 
                 boolean italic = false;
-                Formatting color = flag.team.config().chatFormatting();
+                ChatFormatting color = flag.team.config().chatFormatting();
 
                 var blinkType = flag.capturingState != null ? flag.capturingState.getBlink() : NO_BLINK;
                 switch (blinkType) {
@@ -76,23 +76,23 @@ public final class SiegeSidebar {
                         color = blinkTeam.config().chatFormatting();
                         italic = blinkTeam != flag.team;
                     }
-                    case OWNING_TEAM_TO_GREY -> color = blink ? color : Formatting.GRAY;
+                    case OWNING_TEAM_TO_GREY -> color = blink ? color : ChatFormatting.GRAY;
                 }
 
-                var flagName = Text.literal(flag.name).formatted(color);
+                var flagName = Component.literal(flag.name).withStyle(color);
 
                 if (italic) {
-                    flagName.formatted(Formatting.ITALIC);
+                    flagName.withStyle(ChatFormatting.ITALIC);
                 }
 
                 int percent = (int) Math.floor(flag.captureFraction() * 100);
 
-                Text line;
+                Component line;
                 boolean underAttack = flag.capturingState != null && flag.isFlagUnderAttack();
                 if (underAttack || percent > 0) {
-                    line = Text.literal("(" + percent + "%) ").append(flagName);
+                    line = Component.literal("(" + percent + "%) ").append(flagName);
                 } else if (flag.gateUnderAttack(time)) {
-                    line = Text.literal("(!) ").append(flagName);
+                    line = Component.literal("(!) ").append(flagName);
                 } else {
                     line = flagName;
                 }

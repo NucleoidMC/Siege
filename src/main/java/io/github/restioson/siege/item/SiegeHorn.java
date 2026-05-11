@@ -6,119 +6,119 @@ import eu.pb4.polymer.core.api.item.PolymerItem;
 import io.github.restioson.siege.Siege;
 import io.github.restioson.siege.game.active.SiegeActive;
 import io.github.restioson.siege.game.active.SiegePlayer;
-import net.minecraft.entity.AreaEffectCloudEntity;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.*;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
+import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.ColorParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.particle.EntityEffectParticleEffect;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.tag.InstrumentTags;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.stat.Stats;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
-import net.minecraft.world.event.GameEvent;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.stats.Stats;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Instrument;
+import net.minecraft.world.item.InstrumentItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.InstrumentComponent;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gameevent.GameEvent;
 import org.jetbrains.annotations.Nullable;
-import xyz.nucleoid.packettweaker.PacketContext;
 import xyz.nucleoid.stimuli.event.EventResult;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class SiegeHorn extends GoatHornItem implements PolymerItem {
+public class SiegeHorn extends InstrumentItem implements PolymerItem {
     private static final int COOLDOWN_TICKS = 30 * 20;
     private static final int SOUND_RADIUS = 64;
     private static final int EFFECT_RADIUS = 15;
-    public SiegeHorn(Settings settings) {
+    public SiegeHorn(Properties settings) {
         super(settings);
     }
 
-    public static ItemStack getStack(RegistryWrapper.WrapperLookup lookup, RegistryKey<Instrument> instrument, List<StatusEffectInstance> effects) {
-        ItemStack stack = SiegeHorn.getStackForInstrument(SiegeItems.HORN, lookup.getOrThrow(RegistryKeys.INSTRUMENT).getOrThrow(instrument));
+    public static ItemStack getStack(HolderLookup.Provider lookup, ResourceKey<Instrument> instrument, List<MobEffectInstance> effects) {
+        ItemStack stack = SiegeHorn.create(SiegeItems.HORN, lookup.lookupOrThrow(Registries.INSTRUMENT).getOrThrow(instrument));
 
         stack.set(SiegeItems.HORN_DATA, effects);
 
         return stack;
     }
 
-    public static ActionResult onUse(SiegeActive active, ServerPlayerEntity userPlayer, SiegePlayer user, ItemStack stack, Hand hand) {
+    public static InteractionResult onUse(SiegeActive active, ServerPlayer userPlayer, SiegePlayer user, ItemStack stack, InteractionHand hand) {
         var result = stack.use(active.world, userPlayer, hand);
 
-        if (!result.isAccepted()) {
+        if (!result.consumesAction()) {
             return result; // Fail early
         }
 
-        for (var effect : stack.getOrDefault(SiegeItems.HORN_DATA, List.<StatusEffectInstance>of())) {
+        for (var effect : stack.getOrDefault(SiegeItems.HORN_DATA, List.<MobEffectInstance>of())) {
             for (var entry : active.participants.entrySet()) {
                 var participant = entry.getValue();
                 var player = entry.getKey().getEntity(active.world);
 
-                if (participant.team != user.team || player == null || !player.getBlockPos().isWithinDistance(userPlayer.getPos(), EFFECT_RADIUS)) {
+                if (participant.team != user.team || player == null || !player.blockPosition().closerToCenterThan(userPlayer.position(), EFFECT_RADIUS)) {
                     continue;
                 }
 
-                player.addStatusEffect(new StatusEffectInstance(effect)); // Copy effect
+                player.addEffect(new MobEffectInstance(effect)); // Copy effect
             }
         }
 
-        AreaEffectCloudEntity aoeCloud = new AreaEffectCloudEntity(
+        AreaEffectCloud aoeCloud = new AreaEffectCloud(
                 active.world,
                 userPlayer.getX(),
                 userPlayer.getY(),
                 userPlayer.getZ()
         );
-        aoeCloud.setParticleType(EntityEffectParticleEffect.create(ParticleTypes.ENTITY_EFFECT, user.team.config().fireworkColor().getRgb()));
+        aoeCloud.setCustomParticle(ColorParticleOption.create(ParticleTypes.ENTITY_EFFECT, user.team.config().fireworkColor().getValue()));
         aoeCloud.setRadius(EFFECT_RADIUS);
         aoeCloud.setDuration(1);
-        active.world.spawnEntity(aoeCloud);
+        active.world.addFreshEntity(aoeCloud);
 
-        var cooldownMgr = userPlayer.getItemCooldownManager();
-        cooldownMgr.set(stack, COOLDOWN_TICKS);
+        var cooldownMgr = userPlayer.getCooldowns();
+        cooldownMgr.addCooldown(stack, COOLDOWN_TICKS);
 
         return result;
     }
 
     // TODO HACK: copied from vanilla to change distance. Really we should use a custom instrument
-    private static void playSound(World world, PlayerEntity player, Instrument instrument) {
+    private static void play(Level world, Player player, Instrument instrument) {
         SoundEvent soundEvent = instrument.soundEvent().value();
         float f = SOUND_RADIUS / 16.0F;
-        world.playSoundFromEntity(player, player, soundEvent, SoundCategory.RECORDS, f, 1.0F);
-        world.emitGameEvent(GameEvent.INSTRUMENT_PLAY, player.getPos(), GameEvent.Emitter.of(player));
+        world.playSound(player, player, soundEvent, SoundSource.RECORDS, f, 1.0F);
+        world.gameEvent(GameEvent.INSTRUMENT_PLAY, player.position(), GameEvent.Context.of(player));
     }
 
     // TODO HACK: copied from vanilla to override playSound
     @Override
-    public ActionResult use(World world, PlayerEntity user, Hand hand) {
-        ItemStack itemStack = user.getStackInHand(hand);
-        Optional<? extends RegistryEntry<Instrument>> optional = this.getInstrument(itemStack, user.getRegistryManager());
+    public InteractionResult use(Level world, Player user, InteractionHand hand) {
+        ItemStack itemStack = user.getItemInHand(hand);
+        Optional<? extends Holder<Instrument>> optional = Optional.ofNullable(itemStack.get(DataComponents.INSTRUMENT)).map(InstrumentComponent::instrument);
         if (optional.isPresent()) {
-            Instrument instrument = (Instrument) ((RegistryEntry<?>) optional.get()).value();
-            user.setCurrentHand(hand);
-            playSound(world, user, instrument);
-            user.incrementStat(Stats.USED.getOrCreateStat(this));
-            return ActionResult.CONSUME;
+            Instrument instrument = (Instrument) ((Holder<?>) optional.get()).value();
+            user.startUsingItem(hand);
+            play(world, user, instrument);
+            user.awardStat(Stats.ITEM_USED.get(this));
+            return InteractionResult.CONSUME;
         } else {
-            return ActionResult.FAIL;
+            return InteractionResult.FAIL;
         }
     }
 
     @Override
-    public @Nullable Identifier getPolymerItemModel(ItemStack stack, PacketContext context) {
+    public @Nullable Identifier getPolymerItemModel(ItemStack stack, PacketContext context, HolderLookup.Provider provider) {
         return null;
     }
 

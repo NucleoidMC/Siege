@@ -1,31 +1,31 @@
 package io.github.restioson.siege.game.active.capturing;
 
 import io.github.restioson.siege.game.SiegeTeams;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.BossEvent;
 import org.jetbrains.annotations.NotNull;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 
 import static io.github.restioson.siege.game.active.capturing.CapturingStateSidebarBlink.*;
 
 enum SimpleCapturingState implements CapturingState {
-    CAPTURING(Text.literal("Capturing..").formatted(Formatting.GOLD), true, OWNING_TEAM_TO_CAPTURING),
-    CONTESTED(Text.literal("Contested!").formatted(Formatting.GRAY), true, OWNING_TEAM_TO_GREY),
-    SECURING(Text.literal("Securing..").formatted(Formatting.AQUA), false, OWNING_TEAM_TO_CAPTURING),
-    RECAPTURE_DISABLED(Text.literal("Recapture is disabled for this game!").formatted(Formatting.RED), false, NO_BLINK);
+    CAPTURING(Component.literal("Capturing..").withStyle(ChatFormatting.GOLD), true, OWNING_TEAM_TO_CAPTURING),
+    CONTESTED(Component.literal("Contested!").withStyle(ChatFormatting.GRAY), true, OWNING_TEAM_TO_GREY),
+    SECURING(Component.literal("Securing..").withStyle(ChatFormatting.AQUA), false, OWNING_TEAM_TO_CAPTURING),
+    RECAPTURE_DISABLED(Component.literal("Recapture is disabled for this game!").withStyle(ChatFormatting.RED), false, NO_BLINK);
 
-    private final Text name;
+    private final Component name;
     private final boolean isUnderAttack;
     private final CapturingStateSidebarBlink blink;
 
-    SimpleCapturingState(Text name, boolean isUnderAttack, CapturingStateSidebarBlink blink) {
+    SimpleCapturingState(Component name, boolean isUnderAttack, CapturingStateSidebarBlink blink) {
         this.name = name;
         this.isUnderAttack = isUnderAttack;
         this.blink = blink;
     }
 
-    public Text getTitle() {
+    public Component getTitle() {
         return this.name;
     }
 
@@ -35,12 +35,12 @@ enum SimpleCapturingState implements CapturingState {
     }
 
     @Override
-    public @NotNull BossBar.Color getCaptureBarColorForTeam(GameTeam flagOwner) {
+    public @NotNull BossEvent.BossBarColor getCaptureBarColorForTeam(GameTeam flagOwner) {
         return switch (this) {
-            case CAPTURING -> flagOwner == SiegeTeams.DEFENDERS ? BossBar.Color.RED : BossBar.Color.BLUE;
-            case CONTESTED -> BossBar.Color.WHITE;
-            case SECURING -> BossBar.Color.GREEN;
-            case RECAPTURE_DISABLED -> BossBar.Color.YELLOW;
+            case CAPTURING -> flagOwner == SiegeTeams.DEFENDERS ? BossEvent.BossBarColor.RED : BossEvent.BossBarColor.BLUE;
+            case CONTESTED -> BossEvent.BossBarColor.WHITE;
+            case SECURING -> BossEvent.BossBarColor.GREEN;
+            case RECAPTURE_DISABLED -> BossEvent.BossBarColor.YELLOW;
         };
     }
 

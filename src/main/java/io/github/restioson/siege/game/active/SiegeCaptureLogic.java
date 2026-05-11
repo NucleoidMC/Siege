@@ -8,22 +8,10 @@ import io.github.restioson.siege.game.map.SiegeFlag;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LightningEntity;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.screen.ScreenTexts;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.GameMode;
 import xyz.nucleoid.plasmid.api.game.GameSpace;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.api.util.PlayerRef;
+import xyz.nucleoid.plasmid.api.util.PlayerUtil;
 import xyz.nucleoid.plasmid.api.util.Scheduler;
 
 import java.util.ArrayList;
@@ -31,17 +19,30 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.Vec3;
 
 public final class SiegeCaptureLogic {
     public static final int CAPTURE_TIME_TICKS = 20 * 40;
 
-    private final ServerWorld world;
+    private final ServerLevel world;
     private final GameSpace gameSpace;
     private final SiegeActive game;
 
-    private final List<ServerPlayerEntity> defendersPresent = new ArrayList<>();
-    private final List<ServerPlayerEntity> attackersPresent = new ArrayList<>();
-    private final Set<ServerPlayerEntity> playersPresent = new ReferenceOpenHashSet<>();
+    private final List<ServerPlayer> defendersPresent = new ArrayList<>();
+    private final List<ServerPlayer> attackersPresent = new ArrayList<>();
+    private final Set<ServerPlayer> playersPresent = new ReferenceOpenHashSet<>();
 
     SiegeCaptureLogic(SiegeActive game) {
         this.world = game.world;
@@ -49,7 +50,7 @@ public final class SiegeCaptureLogic {
         this.game = game;
     }
 
-    void tick(ServerWorld world, int interval) {
+    void tick(ServerLevel world, int interval) {
         for (SiegeFlag flag : this.game.map.flags) {
             if (flag.capturable) {
                 this.tickCaptureFlag(world, flag, interval);
@@ -57,28 +58,28 @@ public final class SiegeCaptureLogic {
         }
     }
 
-    private void tickCaptureFlag(ServerWorld world, SiegeFlag flag, int interval) {
-        List<ServerPlayerEntity> defendersPresent = this.defendersPresent;
-        List<ServerPlayerEntity> attackersPresent = this.attackersPresent;
-        Set<ServerPlayerEntity> playersPresent = this.playersPresent;
+    private void tickCaptureFlag(ServerLevel world, SiegeFlag flag, int interval) {
+        List<ServerPlayer> defendersPresent = this.defendersPresent;
+        List<ServerPlayer> attackersPresent = this.attackersPresent;
+        Set<ServerPlayer> playersPresent = this.playersPresent;
 
         defendersPresent.clear();
         attackersPresent.clear();
         playersPresent.clear();
 
         for (Object2ObjectMap.Entry<PlayerRef, SiegePlayer> entry : Object2ObjectMaps.fastIterable(this.game.participants)) {
-            ServerPlayerEntity player = entry.getKey().getEntity(world);
+            ServerPlayer player = entry.getKey().getEntity(world);
             if (player == null) {
                 continue;
             }
 
-            if (player.interactionManager.getGameMode() != GameMode.SURVIVAL) {
+            if (player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
                 continue;
             }
 
             SiegePlayer participant = entry.getValue();
 
-            if (flag.bounds.contains(player.getBlockPos())) {
+            if (flag.bounds.contains(player.blockPosition())) {
                 GameTeam team = participant.team;
                 if (team == SiegeTeams.DEFENDERS) {
                     defendersPresent.add(player);
@@ -128,7 +129,7 @@ public final class SiegeCaptureLogic {
     }
 
     private void tickCapturing(SiegeFlag flag, int interval, GameTeam captureTeam,
-                               Set<ServerPlayerEntity> capturingPlayers) {
+                               Set<ServerPlayer> capturingPlayers) {
         // Just began capturing
         if (flag.captureProgressTicks == 0) {
             this.broadcastStartCapture(flag, captureTeam);
@@ -139,7 +140,7 @@ public final class SiegeCaptureLogic {
                 kitStand.onControllingFlagCaptured();
             }
 
-            for (ServerPlayerEntity player : capturingPlayers) {
+            for (ServerPlayer player : capturingPlayers) {
                 SiegePlayer participant = this.game.participant(player);
                 if (participant != null) {
                     participant.captures += 1;
@@ -150,35 +151,35 @@ public final class SiegeCaptureLogic {
             flag.setTeamBlocks(this.game.world, captureTeam);
             this.game.stageManager.addTime(this.game.config.capturingGiveTimeSecs());
 
-            for (ServerPlayerEntity player : capturingPlayers) {
-                player.playSoundToPlayer(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.NEUTRAL, 1.0F, 1.0F);
+            for (ServerPlayer player : capturingPlayers) {
+                PlayerUtil.playSoundToPlayer(player, SoundEvents.PLAYER_LEVELUP, SoundSource.NEUTRAL, 1.0F, 1.0F);
             }
 
-            Text sub = null;
+            Component sub = null;
             if (this.game.config.capturingGiveTimeSecs() > 0) {
-                sub = Text.empty()
+                sub = Component.empty()
                         .append(SiegeTeams.ATTACKERS.config().name())
-                        .append(ScreenTexts.SPACE)
-                        .append(Text.translatable("game.siege.flag.captured.extra_time.1"))
-                        .append(ScreenTexts.SPACE)
-                        .append(Text.literal(this.game.config.giveTimeFormatted()).formatted(Formatting.AQUA))
-                        .append(ScreenTexts.SPACE)
-                        .append(Text.translatable("game.siege.flag.captured.extra_time.2"));
+                        .append(CommonComponents.SPACE)
+                        .append(Component.translatable("game.siege.flag.captured.extra_time.1"))
+                        .append(CommonComponents.SPACE)
+                        .append(Component.literal(this.game.config.giveTimeFormatted()).withStyle(ChatFormatting.AQUA))
+                        .append(CommonComponents.SPACE)
+                        .append(Component.translatable("game.siege.flag.captured.extra_time.2"));
             }
 
             this.game.showTitle(
                     captureTeam,
-                    Text.translatable("game.siege.flag.captured.won", flag.name).formatted(Formatting.GREEN),
+                    Component.translatable("game.siege.flag.captured.won", flag.name).withStyle(ChatFormatting.GREEN),
                     sub
             );
 
             this.game.showTitle(
                     SiegeTeams.opposite(captureTeam),
-                    Text.translatable("game.siege.flag.captured.lost", flag.name).formatted(Formatting.RED),
+                    Component.translatable("game.siege.flag.captured.lost", flag.name).withStyle(ChatFormatting.RED),
                     sub
             );
         } else {
-            flag.playSound(this.world, SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 1.0F + flag.captureFraction());
+            flag.playSound(this.world, SoundEvents.NOTE_BLOCK_BASS.value(), 1.0F + flag.captureFraction());
         }
 
         var particles = captureTeam == SiegeTeams.ATTACKERS ? ParticleTypes.FLAME : ParticleTypes.SOUL_FIRE_FLAME;
@@ -186,15 +187,15 @@ public final class SiegeCaptureLogic {
     }
 
     private void tickContested(SiegeFlag flag) {
-        flag.playSound(this.world, SoundEvents.BLOCK_NOTE_BLOCK_DIDGERIDOO.value(), 1.0F);
+        flag.playSound(this.world, SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), 1.0F);
         flag.spawnParticles(this.world, ParticleTypes.ANGRY_VILLAGER);
     }
 
-    private void tickSecuring(SiegeFlag flag, int interval, Set<ServerPlayerEntity> securingPlayers) {
+    private void tickSecuring(SiegeFlag flag, int interval, Set<ServerPlayer> securingPlayers) {
         if (flag.decrementCapture(interval * (securingPlayers.size() + 1))) {
             this.broadcastSecured(flag);
 
-            for (ServerPlayerEntity player : securingPlayers) {
+            for (ServerPlayer player : securingPlayers) {
                 SiegePlayer participant = this.game.participant(player);
                 if (participant != null) {
                     participant.secures += 1;
@@ -202,7 +203,7 @@ public final class SiegeCaptureLogic {
             }
         }
 
-        flag.playSound(this.world, SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), 1.0F + flag.captureFraction());
+        flag.playSound(this.world, SoundEvents.NOTE_BLOCK_CHIME.value(), 1.0F + flag.captureFraction());
         flag.spawnParticles(this.world, ParticleTypes.COMPOSTER);
     }
 
@@ -210,19 +211,19 @@ public final class SiegeCaptureLogic {
         var capture = captureTeam == SiegeTeams.ATTACKERS ? "captured" : "recaptured";
 
         this.gameSpace.getPlayers().sendMessage(
-                Text.literal("The ")
-                        .append(Text.literal(flag.name).formatted(Formatting.YELLOW))
-                        .append(ScreenTexts.SPACE)
+                Component.literal("The ")
+                        .append(Component.literal(flag.name).withStyle(ChatFormatting.YELLOW))
+                        .append(CommonComponents.SPACE)
                         .append(flag.presentTobe())
                         .append(" being ")
                         .append(capture)
                         .append(" by the ")
                         .append(captureTeam.config().name())
                         .append("...")
-                        .formatted(Formatting.BOLD)
+                        .withStyle(ChatFormatting.BOLD)
         );
 
-        this.gameSpace.getPlayers().playSound(SoundEvents.BLOCK_BELL_USE);
+        this.gameSpace.getPlayers().playSound(SoundEvents.BELL_BLOCK);
 
         for (Object2ObjectMap.Entry<PlayerRef, SiegePlayer> entry : Object2ObjectMaps.fastIterable(this.game.participants)) {
             if (entry.getValue().team == captureTeam) {
@@ -234,7 +235,7 @@ public final class SiegeCaptureLogic {
                     player -> {
                         AtomicInteger plays = new AtomicInteger();
                         Scheduler.INSTANCE.repeatWhile(
-                                s -> player.playSoundToPlayer(SoundEvents.BLOCK_BELL_USE, SoundCategory.PLAYERS, 1.0f, 1.0f),
+                                s -> PlayerUtil.playSoundToPlayer(player, SoundEvents.BELL_BLOCK, SoundSource.PLAYERS, 1.0f, 1.0f),
                                 t -> plays.incrementAndGet() < 3,
                                 0,
                                 7
@@ -246,33 +247,33 @@ public final class SiegeCaptureLogic {
 
     private void broadcastCaptured(SiegeFlag flag, GameTeam captureTeam) {
         this.gameSpace.getPlayers().sendMessage(
-                Text.literal("The ")
-                        .append(Text.literal(flag.name).formatted(Formatting.YELLOW))
-                        .append(ScreenTexts.SPACE)
+                Component.literal("The ")
+                        .append(Component.literal(flag.name).withStyle(ChatFormatting.YELLOW))
+                        .append(CommonComponents.SPACE)
                         .append(flag.pastToBe())
                         .append(" been captured by the ")
                         .append(captureTeam.config().name())
                         .append("!")
-                        .formatted(Formatting.BOLD)
+                        .withStyle(ChatFormatting.BOLD)
         );
 
-        Vec3d pos = SiegeSpawnLogic.choosePos(this.world.getRandom(), flag.bounds, 0.0f);
-        LightningEntity lightningEntity = EntityType.LIGHTNING_BOLT.create(this.world, SpawnReason.TRIGGERED);
-        Objects.requireNonNull(lightningEntity).refreshPositionAfterTeleport(pos);
-        lightningEntity.setCosmetic(true);
-        this.world.spawnEntity(lightningEntity);
+        Vec3 pos = SiegeSpawnLogic.choosePos(this.world.getRandom(), flag.bounds, 0.0f);
+        LightningBolt lightningEntity = EntityType.LIGHTNING_BOLT.create(this.world, EntitySpawnReason.TRIGGERED);
+        Objects.requireNonNull(lightningEntity).snapTo(pos);
+        lightningEntity.setVisualOnly(true);
+        this.world.addFreshEntity(lightningEntity);
     }
 
     private void broadcastSecured(SiegeFlag flag) {
         this.gameSpace.getPlayers().sendMessage(
-                Text.literal("The ")
-                        .append(Text.literal(flag.name).formatted(Formatting.YELLOW))
-                        .append(ScreenTexts.SPACE)
+                Component.literal("The ")
+                        .append(Component.literal(flag.name).withStyle(ChatFormatting.YELLOW))
+                        .append(CommonComponents.SPACE)
                         .append(flag.pastToBe())
                         .append(" been defended by the ")
                         .append(flag.team.config().name())
                         .append("!")
-                        .formatted(Formatting.BOLD)
+                        .withStyle(ChatFormatting.BOLD)
         );
     }
 }

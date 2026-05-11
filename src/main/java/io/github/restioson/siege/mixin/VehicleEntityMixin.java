@@ -1,9 +1,9 @@
 package io.github.restioson.siege.mixin;
 
 import io.github.restioson.siege.duck.SiegeVehicleExt;
-import net.minecraft.entity.vehicle.VehicleEntity;
-import net.minecraft.item.Item;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.vehicle.VehicleEntity;
+import net.minecraft.world.item.Item;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,8 +15,8 @@ public class VehicleEntityMixin implements SiegeVehicleExt {
     @Unique
     public boolean siege$inSiegeGame;
 
-    @Inject(method = "killAndDropItem", at = @At("HEAD"), cancellable = true)
-    void killAndDropItem(ServerWorld world, Item item, CallbackInfo ci) {
+    @Inject(method = "destroy(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/item/Item;)V", at = @At("HEAD"), cancellable = true)
+    void killAndDropItem(ServerLevel world, Item item, CallbackInfo ci) {
         if (this.siege$inSiegeGame) {
             ci.cancel();
         }

@@ -5,23 +5,23 @@ import io.github.restioson.siege.game.SiegeTeams;
 import io.github.restioson.siege.game.map.SiegeGate;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import net.minecraft.ChatFormatting;
 import net.minecraft.SharedConstants;
-import net.minecraft.block.Blocks;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemUsageContext;
-import net.minecraft.registry.tag.ItemTags;
-import net.minecraft.screen.ScreenTexts;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.world.GameMode;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.api.game.player.MutablePlayerSet;
 import xyz.nucleoid.plasmid.api.util.PlayerRef;
@@ -44,30 +44,30 @@ public class SiegeGateLogic {
         }
     }
 
-    public EventResult maybeBraceGate(BlockPos pos, SiegePlayer participant, ServerPlayerEntity player,
-                                      ItemUsageContext ctx, long time) {
+    public EventResult maybeBraceGate(BlockPos pos, SiegePlayer participant, ServerPlayer player,
+                                      UseOnContext ctx, long time) {
         for (SiegeGate gate : this.game.map.gates) {
             if (gate.brace != null && gate.brace.contains(pos)) {
                 if (gate.health < gate.maxHealth) {
-                    ServerWorld world = this.game.world;
+                    ServerLevel world = this.game.world;
                     gate.health += 1;
                     gate.broadcastHealth(player, this.game, world);
-                    world.setBlockState(pos, Blocks.AIR.getDefaultState());
+                    world.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
                     world.playSound(
                             player,
                             pos.getX(),
                             pos.getY(),
                             pos.getZ(),
-                            SoundEvents.ENTITY_IRON_GOLEM_REPAIR,
-                            SoundCategory.BLOCKS,
+                            SoundEvents.IRON_GOLEM_REPAIR,
+                            SoundSource.BLOCKS,
                             1.0F,
                             1.0F + gate.repairFraction()
                     );
-                    ctx.getStack().decrement(1);
+                    ctx.getItemInHand().shrink(1);
                     participant.timeOfLastBrace = time;
                     return EventResult.DENY;
                 } else {
-                    player.sendMessage(Text.literal("The gate is already at max health!").formatted(Formatting.DARK_GREEN), true);
+                    player.sendSystemMessage(Component.literal("The gate is already at max health!").withStyle(ChatFormatting.DARK_GREEN), true);
                 }
                 return EventResult.DENY;
             }
@@ -77,45 +77,45 @@ public class SiegeGateLogic {
     }
 
     public static boolean canUseToBash(Item item) {
-        return item.getRegistryEntry().isIn(ItemTags.SWORDS) || item.getRegistryEntry().isIn(ItemTags.SHOVELS);
+        return item.builtInRegistryHolder().is(ItemTags.SWORDS) || item.builtInRegistryHolder().is(ItemTags.SHOVELS);
     }
 
-    public EventResult maybeBash(BlockPos pos, ServerPlayerEntity player, SiegePlayer participant, long time) {
-        var mainHandItem = player.getMainHandStack();
+    public EventResult maybeBash(BlockPos pos, ServerPlayer player, SiegePlayer participant, long time) {
+        var mainHandItem = player.getMainHandItem();
         boolean rightKit = participant.kit == SiegeKit.SHIELD_BEARER || participant.kit == SiegeKit.SOLDIER;
 
         for (SiegeGate gate : this.game.map.gates) {
             if (!gate.bashedOpen && gate.health > 0 && gate.portcullis.contains(pos)) {
-                var cooldownMgr = player.getItemCooldownManager();
+                var cooldownMgr = player.getCooldowns();
 
                 if (participant.team == gate.flag.team) {
-                    player.sendMessage(Text.literal("You cannot bash your own gate!").formatted(Formatting.RED), true);
+                    player.sendSystemMessage(Component.literal("You cannot bash your own gate!").withStyle(ChatFormatting.RED), true);
                     return EventResult.DENY;
                 } else if (!rightKit) {
-                    player.sendMessage(Text.literal("Only soldiers and shieldbearers can bash!").formatted(Formatting.RED), true);
+                    player.sendSystemMessage(Component.literal("Only soldiers and shieldbearers can bash!").withStyle(ChatFormatting.RED), true);
                     return EventResult.DENY;
                 } else if (!canUseToBash(mainHandItem.getItem())) {
-                    player.sendMessage(Text.literal("You can only bash with a sword or axe!").formatted(Formatting.RED), true);
+                    player.sendSystemMessage(Component.literal("You can only bash with a sword or axe!").withStyle(ChatFormatting.RED), true);
                     return EventResult.DENY;
                 } else if (!player.isSprinting()) {
-                    player.sendMessage(Text.literal("You must be sprinting to bash!").formatted(Formatting.RED), true);
+                    player.sendSystemMessage(Component.literal("You must be sprinting to bash!").withStyle(ChatFormatting.RED), true);
                     return EventResult.DENY;
-                } else if (cooldownMgr.isCoolingDown(mainHandItem)) {
+                } else if (cooldownMgr.isOnCooldown(mainHandItem)) {
                     return EventResult.DENY;
                 }
 
                 var inventory = player.getInventory();
-                for (var stack : inventory.getMainStacks()) {
+                for (var stack : inventory.getNonEquipmentItems()) {
                     if (canUseToBash(stack.getItem())) {
-                        cooldownMgr.set(stack, SharedConstants.TICKS_PER_SECOND);
+                        cooldownMgr.addCooldown(stack, SharedConstants.TICKS_PER_SECOND);
                     }
                 }
-                if (canUseToBash(player.getOffHandStack().getItem())) {
-                    cooldownMgr.set(player.getOffHandStack(), SharedConstants.TICKS_PER_SECOND);
+                if (canUseToBash(player.getOffhandItem().getItem())) {
+                    cooldownMgr.addCooldown(player.getOffhandItem(), SharedConstants.TICKS_PER_SECOND);
                 }
 
-                ServerWorld world = this.game.world;
-                world.createExplosion(null, pos.getX(), pos.getY(), pos.getZ(), 0.0f, World.ExplosionSourceType.NONE);
+                ServerLevel world = this.game.world;
+                world.explode(null, pos.getX(), pos.getY(), pos.getZ(), 0.0f, Level.ExplosionInteraction.NONE);
                 gate.health -= 1;
                 gate.timeOfLastBash = time;
                 gate.broadcastHealth(player, this.game, world);
@@ -128,14 +128,14 @@ public class SiegeGateLogic {
     }
 
     public void tickGate(SiegeGate gate) {
-        ServerWorld world = this.game.world;
+        ServerLevel world = this.game.world;
 
-        long time = world.getTime();
+        long time = world.getGameTime();
 
         if (gate.underAttack(time)) {
             this.game.team(gate.flag.team)
-                    .sendActionBar(Text.translatable("game.siege.gate.under_attack", gate.name)
-                            .formatted(Formatting.RED));
+                    .sendActionBar(Component.translatable("game.siege.gate.under_attack", gate.name)
+                            .withStyle(ChatFormatting.RED));
         }
 
         if (gate.health <= 0 && !gate.bashedOpen) {
@@ -143,27 +143,27 @@ public class SiegeGateLogic {
 
             BlockPos min = gate.portcullis.min();
             BlockPos max = gate.portcullis.max();
-            Random rand = world.getRandom();
+            RandomSource rand = world.getRandom();
 
             for (int i = 0; i < 10; i++) {
                 double x = min.getX() + rand.nextInt(max.getX() - min.getX() + 1);
                 double y = min.getY() + rand.nextInt(max.getY() - min.getY() + 1);
                 double z = min.getZ() + rand.nextInt(max.getZ() - min.getZ() + 1);
 
-                world.createExplosion(null, x, y, z, 0.0f, World.ExplosionSourceType.NONE);
+                world.explode(null, x, y, z, 0.0f, Level.ExplosionInteraction.NONE);
             }
 
             var bashTeam = SiegeTeams.opposite(gate.flag.team);
 
             this.game.gameSpace.getPlayers().sendMessage(
-                    Text.literal("The ")
-                            .append(Text.literal(gate.name).formatted(Formatting.YELLOW))
-                            .append(ScreenTexts.SPACE)
+                    Component.literal("The ")
+                            .append(Component.literal(gate.name).withStyle(ChatFormatting.YELLOW))
+                            .append(CommonComponents.SPACE)
                             .append(gate.pastToBe())
                             .append(" been bashed open by the ")
                             .append(bashTeam.config().name())
                             .append("!")
-                            .formatted(Formatting.BOLD)
+                            .withStyle(ChatFormatting.BOLD)
             );
 
             if (bashTeam == SiegeTeams.ATTACKERS) {
@@ -179,18 +179,18 @@ public class SiegeGateLogic {
         } else if (gate.health >= gate.repairedHealthThreshold && gate.bashedOpen) {
             GameTeam team = gate.flag.team;
             this.game.gameSpace.getPlayers().sendMessage(
-                    Text.literal("The ")
-                            .append(Text.literal(gate.flag.name).formatted(Formatting.YELLOW))
-                            .append(ScreenTexts.SPACE)
+                    Component.literal("The ")
+                            .append(Component.literal(gate.flag.name).withStyle(ChatFormatting.YELLOW))
+                            .append(CommonComponents.SPACE)
                             .append(gate.flag.pastToBe())
                             .append(" been repaired by the ")
                             .append(team.config().name())
                             .append("!")
-                            .formatted(Formatting.BOLD)
+                            .withStyle(ChatFormatting.BOLD)
             );
 
             BlockPos max = gate.portcullis.max();
-            world.playSound(null, max.getX(), max.getY(), max.getZ(), SoundEvents.BLOCK_ANVIL_USE, SoundCategory.BLOCKS, 1.0f, world.random.nextFloat() * 0.25F + 0.6F);
+            world.playSound(null, max.getX(), max.getY(), max.getZ(), SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 1.0f, world.getRandom().nextFloat() * 0.25F + 0.6F);
 
             gate.slider.setClosed(world);
             gate.bashedOpen = false;
@@ -200,12 +200,12 @@ public class SiegeGateLogic {
         var enemyTeamPresent = new MutablePlayerSet(world.getServer());
 
         for (Object2ObjectMap.Entry<PlayerRef, SiegePlayer> entry : Object2ObjectMaps.fastIterable(this.game.participants)) {
-            ServerPlayerEntity player = entry.getKey().getEntity(world);
-            if (player == null || player.interactionManager.getGameMode() != GameMode.SURVIVAL) {
+            ServerPlayer player = entry.getKey().getEntity(world);
+            if (player == null || player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
                 continue;
             }
 
-            if (gate.gateOpen.contains(player.getBlockPos())) {
+            if (gate.gateOpen.contains(player.blockPosition())) {
                 SiegePlayer participant = entry.getValue();
                 if (participant.team == gate.flag.team) {
                     ownerTeamPresent.add(player);
@@ -231,27 +231,27 @@ public class SiegeGateLogic {
                     var kit = participant.kit == SiegeKit.ENGINEER ? "engineer" : "general";
                     if (gate.bashedOpen) {
                         var key = String.format("game.siege.gate.repair_hint.%s", kit);
-                        player.sendMessage(
-                                Text.translatable(key, gate.blocksToRepair()).formatted(Formatting.GOLD),
+                        player.sendSystemMessage(
+                                Component.translatable(key, gate.blocksToRepair()).withStyle(ChatFormatting.GOLD),
                                 true
                         );
                     } else {
                         var key = String.format("game.siege.gate.brace_hint.%s", kit);
-                        player.sendMessage(Text.translatable(key, gate.health, gate.maxHealth)
-                                .formatted(Formatting.GOLD), true);
+                        player.sendSystemMessage(Component.translatable(key, gate.health, gate.maxHealth)
+                                .withStyle(ChatFormatting.GOLD), true);
                     }
                 }
             } else if (!enemyTeamPresent.isEmpty() && !ownerTeamPresent.isEmpty()) {
-                player.sendMessage(Text.translatable("game.siege.gate.contested").formatted(Formatting.RED), true);
+                player.sendSystemMessage(Component.translatable("game.siege.gate.contested").withStyle(ChatFormatting.RED), true);
             }
         }
 
         if (gate.bashedOpen) {
-            enemyTeamPresent.sendActionBar(Text.translatable("game.siege.gate.capture_hint")
-                    .formatted(Formatting.GOLD));
+            enemyTeamPresent.sendActionBar(Component.translatable("game.siege.gate.capture_hint")
+                    .withStyle(ChatFormatting.GOLD));
             return;
         } else if (!gate.underAttack(time)) {
-            enemyTeamPresent.sendActionBar(Text.translatable("game.siege.gate.bash_hint").formatted(Formatting.GOLD));
+            enemyTeamPresent.sendActionBar(Component.translatable("game.siege.gate.bash_hint").withStyle(ChatFormatting.GOLD));
         }
 
         boolean shouldOpen = !ownerTeamPresent.isEmpty() && enemyTeamPresent.isEmpty();
@@ -266,6 +266,6 @@ public class SiegeGateLogic {
         double y = pos.getY();
         double z = pos.getZ();
 
-        world.playSound(null, x, y, z, SoundEvents.BLOCK_LADDER_STEP, SoundCategory.BLOCKS, 1.0f, world.random.nextFloat() * 0.25F + 0.6F);
+        world.playSound(null, x, y, z, SoundEvents.LADDER_STEP, SoundSource.BLOCKS, 1.0f, world.getRandom().nextFloat() * 0.25F + 0.6F);
     }
 }
