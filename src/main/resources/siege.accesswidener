@@ -1,3 +1,2 @@
 accessWidener	v2	official
 accessible	field	net/minecraft/world/level/block/CrossCollisionBlock	PROPERTY_BY_DIRECTION	Ljava/util/Map;
-accessible	method	net/minecraft/world/item/InstrumentItem	getInstrument	(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/core/HolderLookup$Provider;)Ljava/util/Optional;
