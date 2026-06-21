@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
@@ -30,7 +31,7 @@ public final class SiegeKitStandEntity extends ArmorStand {
     private final SiegeActive game;
 
     public SiegeKitStandEntity(SiegeActive game, SiegeKitStandData stand) {
-        super(EntityType.ARMOR_STAND, game.world);
+        super(EntityTypes.ARMOR_STAND, game.world);
         this.kit = stand.type();
         this.controllingFlag = stand.flag();
         this.team = this.controllingFlag != null ? this.controllingFlag.team : stand.team();

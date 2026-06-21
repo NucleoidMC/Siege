@@ -8,6 +8,7 @@ import io.github.restioson.siege.game.map.SiegeFlag;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import net.minecraft.world.entity.EntityTypes;
 import xyz.nucleoid.plasmid.api.game.GameSpace;
 import xyz.nucleoid.plasmid.api.game.common.team.GameTeam;
 import xyz.nucleoid.plasmid.api.util.PlayerRef;
@@ -258,7 +259,7 @@ public final class SiegeCaptureLogic {
         );
 
         Vec3 pos = SiegeSpawnLogic.choosePos(this.world.getRandom(), flag.bounds, 0.0f);
-        LightningBolt lightningEntity = EntityType.LIGHTNING_BOLT.create(this.world, EntitySpawnReason.TRIGGERED);
+        LightningBolt lightningEntity = EntityTypes.LIGHTNING_BOLT.create(this.world, EntitySpawnReason.TRIGGERED);
         Objects.requireNonNull(lightningEntity).snapTo(pos);
         lightningEntity.setVisualOnly(true);
         this.world.addFreshEntity(lightningEntity);

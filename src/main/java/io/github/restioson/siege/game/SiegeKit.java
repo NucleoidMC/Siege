@@ -127,7 +127,7 @@ public final class SiegeKit {
             "captain",
             Items.GOAT_HORN,
             List.of(
-                    new KitEquipment(Items.RED_BANNER, Items.BLUE_BANNER, EquipmentSlot.HEAD, EquipmentSlot.HEAD),
+                    new KitEquipment(Items.BANNER.red(), Items.BANNER.blue(), EquipmentSlot.HEAD, EquipmentSlot.HEAD),
                     new KitEquipment(Items.GOLDEN_CHESTPLATE),
                     new KitEquipment(Items.LEATHER_LEGGINGS),
                     new KitEquipment(Items.GOLDEN_BOOTS),

@@ -190,55 +190,22 @@ public final class SiegeFlag {
             for (BlockPos blockPos : blockBounds) {
                 BlockState blockState = world.getBlockState(blockPos);
                 Block block = blockState.getBlock();
-                if (block == Blocks.BLUE_WOOL || block == Blocks.RED_WOOL) {
-                    Block wool;
-
-                    if (captureTeam == SiegeTeams.DEFENDERS) {
-                        wool = Blocks.BLUE_WOOL;
-                    } else {
-                        wool = Blocks.RED_WOOL;
-                    }
-
-                    world.setBlockAndUpdate(blockPos, wool.defaultBlockState());
+                if (block == Blocks.WOOL.blue() || block == Blocks.WOOL.red()) {
+                    world.setBlockAndUpdate(blockPos, Blocks.WOOL.pick(captureTeam.config().blockDyeColor()).defaultBlockState());
                 }
 
-                if (block == Blocks.BLUE_WALL_BANNER || block == Blocks.RED_WALL_BANNER) {
-                    Block banner;
-
-                    if (captureTeam == SiegeTeams.DEFENDERS) {
-                        banner = Blocks.BLUE_WALL_BANNER;
-                    } else {
-                        banner = Blocks.RED_WALL_BANNER;
-                    }
-
-                    BlockState newBlockState = banner.defaultBlockState().setValue(WallBannerBlock.FACING, blockState.getValue(WallBannerBlock.FACING));
+                if (block == Blocks.WALL_BANNER.blue() || block == Blocks.WALL_BANNER.red()) {
+                    BlockState newBlockState = Blocks.WALL_BANNER.pick(captureTeam.config().blockDyeColor()).defaultBlockState().setValue(WallBannerBlock.FACING, blockState.getValue(WallBannerBlock.FACING));
                     world.setBlockAndUpdate(blockPos, newBlockState);
                 }
 
-                if (block == Blocks.BLUE_BANNER || block == Blocks.RED_BANNER) {
-                    Block banner;
-
-                    if (captureTeam == SiegeTeams.DEFENDERS) {
-                        banner = Blocks.BLUE_BANNER;
-                    } else {
-                        banner = Blocks.RED_BANNER;
-                    }
-
-                    BlockState newBlockState = banner.defaultBlockState().setValue(BannerBlock.ROTATION, blockState.getValue(BannerBlock.ROTATION));
+                if (block == Blocks.BANNER.blue() || block == Blocks.BANNER.red()) {
+                    BlockState newBlockState = Blocks.BANNER.pick(captureTeam.config().blockDyeColor()).defaultBlockState().setValue(BannerBlock.ROTATION, blockState.getValue(BannerBlock.ROTATION));
                     world.setBlockAndUpdate(blockPos, newBlockState);
                 }
 
-                if (block == Blocks.BLUE_CONCRETE || block == Blocks.RED_CONCRETE) {
-                    Block concrete;
-
-                    if (captureTeam == SiegeTeams.DEFENDERS) {
-                        concrete = Blocks.BLUE_CONCRETE;
-                    } else {
-                        concrete = Blocks.RED_CONCRETE;
-                    }
-
-                    BlockState newBlockState = concrete.defaultBlockState();
-                    world.setBlockAndUpdate(blockPos, newBlockState);
+                if (block == Blocks.CONCRETE.blue() || block == Blocks.CONCRETE.red()) {
+                    world.setBlockAndUpdate(blockPos, Blocks.CONCRETE.pick(captureTeam.config().blockDyeColor()).defaultBlockState());
                 }
             }
 
