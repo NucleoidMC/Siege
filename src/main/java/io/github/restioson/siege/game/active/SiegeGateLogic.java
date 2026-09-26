@@ -18,6 +18,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -76,8 +77,8 @@ public class SiegeGateLogic {
         return EventResult.PASS;
     }
 
-    public static boolean canUseToBash(Item item) {
-        return item.builtInRegistryHolder().is(ItemTags.SWORDS) || item.builtInRegistryHolder().is(ItemTags.SHOVELS);
+    public static boolean canUseToBash(ItemStack item) {
+        return item.is(ItemTags.SWORDS) || item.is(ItemTags.SHOVELS);
     }
 
     public EventResult maybeBash(BlockPos pos, ServerPlayer player, SiegePlayer participant, long time) {
@@ -94,7 +95,7 @@ public class SiegeGateLogic {
                 } else if (!rightKit) {
                     player.sendSystemMessage(Component.literal("Only soldiers and shieldbearers can bash!").withStyle(ChatFormatting.RED), true);
                     return EventResult.DENY;
-                } else if (!canUseToBash(mainHandItem.getItem())) {
+                } else if (!canUseToBash(mainHandItem)) {
                     player.sendSystemMessage(Component.literal("You can only bash with a sword or axe!").withStyle(ChatFormatting.RED), true);
                     return EventResult.DENY;
                 } else if (!player.isSprinting()) {
@@ -106,11 +107,11 @@ public class SiegeGateLogic {
 
                 var inventory = player.getInventory();
                 for (var stack : inventory.getNonEquipmentItems()) {
-                    if (canUseToBash(stack.getItem())) {
+                    if (canUseToBash(stack)) {
                         cooldownMgr.addCooldown(stack, SharedConstants.TICKS_PER_SECOND);
                     }
                 }
-                if (canUseToBash(player.getOffhandItem().getItem())) {
+                if (canUseToBash(player.getOffhandItem())) {
                     cooldownMgr.addCooldown(player.getOffhandItem(), SharedConstants.TICKS_PER_SECOND);
                 }
 

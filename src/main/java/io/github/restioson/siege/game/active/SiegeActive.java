@@ -24,6 +24,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
@@ -410,7 +411,7 @@ public class SiegeActive {
         }
 
         SiegePlayer participant = this.participant(player);
-        Item inHand = player.getItemInHand(hand).getItem();
+        var inHand = player.getItemInHand(hand);
         if (participant != null) {
             pos.relative(hitResult.getDirection());
             BlockState state = this.world.getBlockState(pos);
@@ -429,7 +430,7 @@ public class SiegeActive {
             }
 
             // Disable log stripping
-            if (inHand instanceof AxeItem) {
+            if (inHand.is(ItemTags.AXES)) {
                 return InteractionResult.FAIL;
             }
 

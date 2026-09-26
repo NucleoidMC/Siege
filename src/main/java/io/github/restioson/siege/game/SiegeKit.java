@@ -11,6 +11,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -284,7 +285,7 @@ public final class SiegeKit {
             } else if (stack.has(DataComponents.EQUIPPABLE)) {
                 player.setItemSlot(Objects.requireNonNull(stack.get(DataComponents.EQUIPPABLE)).slot(), stack);
             } else {
-                inventory.placeItemBackInInventory(stack);
+                inventory.placeItemBackInInventory(stack, Prediction.SERVER_ONLY);
             }
         }
 
@@ -363,7 +364,7 @@ public final class SiegeKit {
             if (this.equipmentSlot() != null && required == this.max()) {
                 player.setItemSlot(this.equipmentSlot(), stack);
             } else {
-                inventory.placeItemBackInInventory(stack);
+                inventory.placeItemBackInInventory(stack, Prediction.SERVER_ONLY);
             }
 
             if (resource != null) {

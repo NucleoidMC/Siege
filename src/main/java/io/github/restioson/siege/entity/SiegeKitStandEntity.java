@@ -42,7 +42,7 @@ public final class SiegeKitStandEntity extends ArmorStand {
         this.absSnapTo(stand.pos().x, stand.pos().y, stand.pos().z, stand.yaw(), 0);
 
         this.setCustomName(this.kit.getName());
-        this.setInvulnerable(true);
+        this.setPermanentlyInvulnerable(true);
         this.setCustomNameVisible(true);
         this.setShowArms(true);
         this.kit.equipArmourStand(this);
